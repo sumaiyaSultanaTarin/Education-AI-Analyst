@@ -27,3 +27,14 @@ python-pptx==1.0.2
 
 # Phase 2 — /sessions/{id}/documents upload endpoint (FastAPI UploadFile)
 python-multipart==0.0.32
+
+# Phase 3 — Knowledge/RAG Agent: local embeddings (OpenRouter doesn't serve
+# embeddings, see CLAUDE.md) + Chroma vector store
+sentence-transformers==3.3.1
+chromadb==0.5.23
+
+# Phase 3 — Data Analyst Agent: pandas over ingested XLSX rows
+pandas==2.2.3
+
+# Verify these three pins against what's actually resolvable in each
+# teammate's environment before merging — added without a live install here.
