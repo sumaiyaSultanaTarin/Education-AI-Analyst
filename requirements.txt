@@ -20,3 +20,7 @@ openpyxl==3.1.5
 python-docx==1.2.0
 fpdf2==2.8.8
 Pillow==12.3.0
+
+# Phase 2 — Document Ingestion Agent
+pdfplumber==0.11.10
+python-pptx==1.0.2

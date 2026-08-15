@@ -7,6 +7,7 @@ directly from an agent file (see CLAUDE.md conventions). Each model in
 we move to the next one; only once every model has failed do we raise.
 """
 
+import base64
 from functools import lru_cache
 
 from openai import OpenAI
@@ -32,9 +33,37 @@ class LLMClient:
 
     def chat(self, messages: list[dict], **kwargs) -> str:
         """Send a chat completion request, trying each fallback model in order."""
+        return self._chat_over_models(self._settings.openrouter_fallback_models, messages, **kwargs)
+
+    def chat_with_image(
+        self, image_bytes: bytes, mime_type: str, prompt: str, **kwargs
+    ) -> str:
+        """Send an image + prompt to a vision-capable fallback model.
+
+        Used by the Vision/OCR agent instead of a dedicated OCR engine — keeps
+        every LLM-touching call (text or vision) going through this one client.
+        """
+        encoded = base64.b64encode(image_bytes).decode("utf-8")
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:{mime_type};base64,{encoded}"},
+                    },
+                ],
+            }
+        ]
+        return self._chat_over_models(
+            self._settings.openrouter_vision_fallback_models, messages, **kwargs
+        )
+
+    def _chat_over_models(self, models: list[str], messages: list[dict], **kwargs) -> str:
         last_error: Exception | None = None
 
-        for model in self._settings.openrouter_fallback_models:
+        for model in models:
             try:
                 return self._call_model(model, messages, **kwargs)
             except Exception as exc:  # noqa: BLE001 - deliberately broad: any
@@ -43,7 +72,7 @@ class LLMClient:
                 last_error = exc
 
         raise AllModelsFailedError(
-            f"All {len(self._settings.openrouter_fallback_models)} fallback models failed"
+            f"All {len(models)} fallback models failed"
         ) from last_error
 
     @retry(

@@ -26,11 +26,18 @@ class Settings(BaseSettings):
         "google/gemma-2-9b-it:free",
         "mistralai/mistral-7b-instruct:free",
     ]
+    # Separate list: must be vision-capable models, used only by the OCR agent.
+    openrouter_vision_fallback_models: list[str] = [
+        "meta-llama/llama-3.2-11b-vision-instruct:free",
+        "qwen/qwen2.5-vl-32b-instruct:free",
+    ]
 
-    @field_validator("openrouter_fallback_models", mode="before")
+    @field_validator(
+        "openrouter_fallback_models", "openrouter_vision_fallback_models", mode="before"
+    )
     @classmethod
     def _split_csv(cls, value: object) -> object:
-        # lets OPENROUTER_FALLBACK_MODELS be a plain comma-separated .env value
+        # lets the *_FALLBACK_MODELS env vars be plain comma-separated values
         # instead of requiring JSON array syntax.
         if isinstance(value, str):
             return [model.strip() for model in value.split(",") if model.strip()]
