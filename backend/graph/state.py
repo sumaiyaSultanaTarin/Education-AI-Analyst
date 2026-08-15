@@ -38,6 +38,7 @@ class TokenCost(TypedDict):
 
 class ErrorRecord(TypedDict):
     agent_name: str
+    document_id: str | None
     error_type: str
     message: str
     timestamp: str
@@ -54,6 +55,10 @@ class AnalystState(TypedDict):
     hitl_status: dict[str, str]
     token_usage: dict[str, TokenCost]
     errors: list[ErrorRecord]
+    # Scratch field the Supervisor node uses to hand off which document the
+    # next worker node should process — not part of the persisted domain
+    # model, just routing state for a single graph run.
+    current_document_id: str | None
 
 
 def new_state(session_id: str, goal: str) -> AnalystState:
@@ -68,4 +73,5 @@ def new_state(session_id: str, goal: str) -> AnalystState:
         hitl_status={},
         token_usage={},
         errors=[],
+        current_document_id=None,
     )

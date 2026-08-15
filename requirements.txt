@@ -24,3 +24,6 @@ Pillow==12.3.0
 # Phase 2 — Document Ingestion Agent
 pdfplumber==0.11.10
 python-pptx==1.0.2
+
+# Phase 2 — /sessions/{id}/documents upload endpoint (FastAPI UploadFile)
+python-multipart==0.0.32

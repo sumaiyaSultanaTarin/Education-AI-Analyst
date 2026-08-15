@@ -34,6 +34,7 @@ class VisionOCRAgent:
             logger.error("Failed to OCR %s: %s", document["filename"], exc)
             state["errors"].append({
                 "agent_name": self.name,
+                "document_id": document["document_id"],
                 "error_type": type(exc).__name__,
                 "message": f"{document['filename']}: {exc}",
                 "timestamp": datetime.now(timezone.utc).isoformat(),
