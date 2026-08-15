@@ -1,0 +1,8 @@
+# Sample data pack generation (scripts/generate_sample_data.py).
+# Merge with dev_tarin's requirements.txt (FastAPI/LangGraph/OpenRouter deps)
+# when this branch merges into develop.
+
+openpyxl==3.1.5
+python-docx==1.2.0
+fpdf2==2.8.8
+Pillow==12.3.0
