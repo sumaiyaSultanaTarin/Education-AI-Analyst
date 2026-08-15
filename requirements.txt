@@ -27,3 +27,8 @@ python-pptx==1.0.2
 
 # Phase 2 — /sessions/{id}/documents upload endpoint (FastAPI UploadFile)
 python-multipart==0.0.32
+
+# Phase 4 — Social Intelligence Agent: local lexicon-based sentiment scoring,
+# avoids burning free-tier OpenRouter quota on every comment (see gap #3 in
+# docs/architecture.md re: rate limits).
+vaderSentiment==3.3.2

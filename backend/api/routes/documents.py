@@ -20,7 +20,7 @@ router = APIRouter(prefix="/sessions", tags=["documents"])
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _UPLOAD_DIR = _REPO_ROOT / "data" / "uploads"
 
-DocumentType = Literal["pdf", "docx", "pptx", "xlsx", "image"]
+DocumentType = Literal["pdf", "docx", "pptx", "xlsx", "image", "social_csv"]
 
 _EXTENSION_TYPES: dict[str, DocumentType] = {
     ".pdf": "pdf",
@@ -30,6 +30,7 @@ _EXTENSION_TYPES: dict[str, DocumentType] = {
     ".png": "image",
     ".jpg": "image",
     ".jpeg": "image",
+    ".csv": "social_csv",
 }
 
 
