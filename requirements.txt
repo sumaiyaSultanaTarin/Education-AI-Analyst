@@ -1,0 +1,15 @@
+# Phase 1 — FastAPI scaffold, LangGraph state/Supervisor stub, OpenRouter client.
+# Extend per-phase as agents/tools land (see docs/final-task-assignment.md).
+
+fastapi==0.141.1
+uvicorn[standard]==0.52.3
+pydantic-settings==2.15.0
+python-dotenv==1.2.2
+
+langgraph==1.2.11
+langchain-core==1.5.4
+openai==3.0.0
+tenacity==9.1.4
+
+pytest==9.1.1
+httpx==0.28.1
