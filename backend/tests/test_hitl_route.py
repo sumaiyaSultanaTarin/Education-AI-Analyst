@@ -16,8 +16,13 @@ class _FakeLLMClient:
 
 
 def _install_fake_report_graph(monkeypatch, chroma_collection, fake_embed_fn, reports_dir):
-    """See test_report_route.py's version of this helper for why both module
-    attributes need patching."""
+    """Swap the lazily-built report graph for one built entirely from fakes.
+
+    Patching `api.report_pipeline.get_report_graph` is enough: routes/report.py
+    and routes/hitl.py both call `report_pipeline.get_report_graph()` at
+    request time rather than binding their own module-level name, so there's
+    only one place to patch.
+    """
     rag_agent = KnowledgeRAGAgent(collection=chroma_collection, embed_fn=fake_embed_fn)
     graph = build_report_graph(
         rag_agent=rag_agent,
@@ -25,9 +30,7 @@ def _install_fake_report_graph(monkeypatch, chroma_collection, fake_embed_fn, re
         qa_critic_agent=QACriticAgent(llm_client=_FakeLLMClient()),
         checkpointer=MemorySaver(),
     )
-    monkeypatch.setattr("api.report_pipeline.report_graph", graph)
-    monkeypatch.setattr("api.routes.report.report_graph", graph)
-    monkeypatch.setattr("api.routes.hitl.report_graph", graph)
+    monkeypatch.setattr("api.report_pipeline.get_report_graph", lambda: graph)
     return graph
 
 

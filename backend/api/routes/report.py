@@ -13,11 +13,11 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
+from api import report_pipeline
 from api.report_pipeline import (
     SessionNotFoundError,
     apply_result,
     get_record,
-    report_graph,
     summarize,
     thread_config,
 )
@@ -54,7 +54,7 @@ def generate_report(session_id: str) -> ReportRunResponse:
         raise HTTPException(status_code=400, detail="No documents to report on")
 
     logger.info("Generating report for session %s", session_id)
-    report_graph.invoke(record.state, config=thread_config(session_id))
+    report_pipeline.get_report_graph().invoke(record.state, config=thread_config(session_id))
     apply_result(session_id, record)
     return ReportRunResponse(**summarize(record))
 

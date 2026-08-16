@@ -16,13 +16,13 @@ class _FakeLLMClient:
 
 
 def _install_fake_report_graph(monkeypatch, chroma_collection, fake_embed_fn, reports_dir):
-    """Swap the module-level report_graph singleton for one built entirely
-    from fakes, so these tests don't need the real Chroma disk store, the
-    real sentence-transformers model, or a real OpenRouter call.
+    """Swap the lazily-built report graph for one built entirely from fakes,
+    so these tests don't need the real Chroma disk store, the real
+    sentence-transformers model, or a real OpenRouter call.
 
-    Both `api.report_pipeline.report_graph` (used by apply_result) and
-    `api.routes.report.report_graph` (imported by name into that module at
-    import time, so it needs its own patch) must be replaced.
+    Patching `api.report_pipeline.get_report_graph` is enough: routes/report.py
+    calls `report_pipeline.get_report_graph()` at request time rather than
+    binding its own module-level name, so there's only one place to patch.
     """
     rag_agent = KnowledgeRAGAgent(collection=chroma_collection, embed_fn=fake_embed_fn)
     graph = build_report_graph(
@@ -31,8 +31,7 @@ def _install_fake_report_graph(monkeypatch, chroma_collection, fake_embed_fn, re
         qa_critic_agent=QACriticAgent(llm_client=_FakeLLMClient()),
         checkpointer=MemorySaver(),
     )
-    monkeypatch.setattr("api.report_pipeline.report_graph", graph)
-    monkeypatch.setattr("api.routes.report.report_graph", graph)
+    monkeypatch.setattr("api.report_pipeline.get_report_graph", lambda: graph)
     return graph
 
 
