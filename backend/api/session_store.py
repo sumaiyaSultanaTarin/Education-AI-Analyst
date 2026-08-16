@@ -14,7 +14,10 @@ from graph.state import AnalystState
 class SessionRecord:
     state: AnalystState
     created_at: str
-    status: Literal["planned", "completed"] = "planned"
+    # "awaiting_approval"/"report_ready" added for the Phase 5 report/HITL
+    # pipeline (api/report_pipeline.py) — "planned"/"completed" are Tarin's
+    # existing Phase 1/2 intake states, left as-is.
+    status: Literal["planned", "completed", "awaiting_approval", "report_ready"] = "planned"
 
 
 sessions: dict[str, SessionRecord] = {}
