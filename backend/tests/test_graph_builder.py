@@ -60,3 +60,31 @@ def test_graph_with_no_documents_ends_immediately():
 
     assert result["agent_outputs"] == {}
     assert result["errors"] == []
+
+
+def test_graph_routes_social_csv_to_social_intelligence(sample_docs_dir, tmp_path):
+    csv_path = tmp_path / "comments.csv"
+    csv_path.write_text(
+        "fb_post_id,post_content,posted_at,fb_comment_id,author,comment_content\n"
+        "post-1,Great turnout!,2025-09-01,c-1,Ayesha,Loved it!\n",
+        encoding="utf-8",
+    )
+    graph = build_graph(vision_ocr_agent=VisionOCRAgent(llm_client=_FakeLLMClient()))
+
+    state = new_state(session_id="s1", goal="mixed intake")
+    state["documents"] = [
+        _doc(sample_docs_dir, "course_syllabus.pdf", "pdf"),
+        {
+            "document_id": "doc-comments.csv",
+            "filename": "comments.csv",
+            "type": "social_csv",
+            "path": str(csv_path),
+        },
+    ]
+
+    result = graph.invoke(state)
+
+    assert "doc-course_syllabus.pdf" in result["agent_outputs"]["document_ingestion"]
+    output = result["agent_outputs"]["social_intelligence"]["doc-comments.csv"]
+    assert output["posts"][0]["comments"][0]["sentiment"]["label"] == "positive"
+    assert result["errors"] == []
