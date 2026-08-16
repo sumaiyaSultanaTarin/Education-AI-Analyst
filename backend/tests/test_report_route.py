@@ -91,3 +91,18 @@ def test_get_report_before_generation_returns_404():
     response = client.get(f"/sessions/{session_id}/report")
 
     assert response.status_code == 404
+
+
+def test_get_report_before_hitl_approval_returns_404(
+    monkeypatch, tmp_path, sample_docs_dir, chroma_collection, fake_embed_fn
+):
+    """The draft file is written to disk before the graph pauses for human
+    approval, so GET /report must check approval status too, not just
+    whether the file exists — otherwise it hands out unapproved drafts."""
+    _install_fake_report_graph(monkeypatch, chroma_collection, fake_embed_fn, tmp_path / "reports")
+    session_id = _create_session_with_xlsx(monkeypatch, tmp_path / "uploads", sample_docs_dir)
+    client.post(f"/sessions/{session_id}/generate-report")
+
+    response = client.get(f"/sessions/{session_id}/report")
+
+    assert response.status_code == 404

@@ -66,4 +66,9 @@ def get_report(session_id: str) -> FileResponse:
     report_path = summary["report_path"]
     if report_path is None or not Path(report_path).exists():
         raise HTTPException(status_code=404, detail="Report not generated yet")
+    # The draft is written to disk before the graph pauses at hitl_approval,
+    # so report_path already exists while a human still needs to sign off —
+    # gate on record.status too, or this endpoint hands out unapproved drafts.
+    if record.status != "report_ready":
+        raise HTTPException(status_code=404, detail="Report not approved yet")
     return FileResponse(report_path, filename=Path(report_path).name)
