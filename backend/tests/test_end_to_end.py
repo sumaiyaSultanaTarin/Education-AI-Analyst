@@ -94,10 +94,11 @@ def test_full_pipeline_from_upload_to_approved_report(
 
     # 3. Run intake — ingests every document by type (Document Ingestion,
     # Vision/OCR, Social Intelligence agents). Vision/OCR's default agent
-    # (built once at sessions.py import time) resolves its LLM client lazily
-    # via tools/ocr_tools.get_llm_client() at call time — patch that, not
-    # agents.vision_ocr_agent's own (unused) import of the same name.
-    monkeypatch.setattr("tools.ocr_tools.get_llm_client", lambda: _FakeLLMClient())
+    # (built once at sessions.py import time) resolves its LLM client lazily,
+    # inside agents/vision_ocr_agent.py's own process_image() — patch the
+    # name there, not tools/ocr_tools's copy of the same import (which never
+    # gets reached: process_image() now always passes an explicit client).
+    monkeypatch.setattr("agents.vision_ocr_agent.get_llm_client", lambda: _FakeLLMClient())
     run_response = client.post(f"/sessions/{session_id}/run")
     assert run_response.status_code == 200, run_response.text
     run_body = run_response.json()
