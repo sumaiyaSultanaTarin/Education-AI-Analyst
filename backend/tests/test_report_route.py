@@ -70,6 +70,23 @@ def test_generate_report_runs_pipeline_and_pauses_for_hitl(
     assert body["report_path"] is not None
 
 
+def test_get_session_after_generate_report_does_not_500(
+    monkeypatch, tmp_path, sample_docs_dir, chroma_collection, fake_embed_fn
+):
+    """SessionResponse.status (routes/sessions.py) must accept every value
+    SessionRecord.status can hold, including the "awaiting_approval" and
+    "report_ready" states generate-report sets — otherwise GET /sessions/{id}
+    500s on any session that has ever generated a report."""
+    _install_fake_report_graph(monkeypatch, chroma_collection, fake_embed_fn, tmp_path / "reports")
+    session_id = _create_session_with_xlsx(monkeypatch, tmp_path / "uploads", sample_docs_dir)
+    client.post(f"/sessions/{session_id}/generate-report")
+
+    response = client.get(f"/sessions/{session_id}")
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "awaiting_approval"
+
+
 def test_generate_report_without_documents_returns_400():
     response = client.post("/sessions", json={"goal": "no docs", "user_id": "u1"})
     session_id = response.json()["session_id"]
