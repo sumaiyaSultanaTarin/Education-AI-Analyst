@@ -30,6 +30,11 @@ class LLMClient:
             api_key=self._settings.openrouter_api_key,
             base_url=self._settings.openrouter_base_url,
         )
+        # Usage from the most recent successful _call_model() call — read via
+        # get_last_usage() right after chat()/chat_with_image() returns.
+        # Not thread-safe (fine: this app makes one LLM call at a time per
+        # request, same as the rest of the in-memory session store).
+        self._last_usage: dict | None = None
 
     def chat(self, messages: list[dict], **kwargs) -> str:
         """Send a chat completion request, trying each fallback model in order."""
@@ -87,7 +92,24 @@ class LLMClient:
             messages=messages,
             **kwargs,
         )
+        usage = getattr(response, "usage", None)
+        self._last_usage = {
+            "model": model,
+            "tokens_in": getattr(usage, "prompt_tokens", 0) or 0,
+            "tokens_out": getattr(usage, "completion_tokens", 0) or 0,
+            # Every model in the fallback lists is a ":free" OpenRouter tier
+            # model (core/config.py) — real per-token pricing for paid models
+            # isn't wired up, so this is honestly 0.0 rather than a made-up
+            # number. Revisit if a paid model ever gets added to a fallback list.
+            "cost_usd": 0.0,
+        }
         return response.choices[0].message.content or ""
+
+    def get_last_usage(self) -> dict | None:
+        """Token usage from the most recent successful chat()/chat_with_image()
+        call, or None if none has been made yet. See core/cost_tracker.py for
+        how callers fold this into AnalystState.token_usage."""
+        return self._last_usage
 
 
 @lru_cache

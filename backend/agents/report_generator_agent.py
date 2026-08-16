@@ -12,9 +12,10 @@ from pathlib import Path
 
 from agents.data_analyst_agent import DataAnalystAgent
 from agents.knowledge_rag_agent import KnowledgeRAGAgent
+from agents.social_intel_agent import SocialIntelligenceAgent
 from core.logging_config import get_logger
 from graph.state import AnalystState
-from tools.report_tools import build_report_docx
+from tools.report_tools import build_report_docx, build_report_pptx, summarize_social_intelligence
 
 logger = get_logger(__name__)
 
@@ -34,17 +35,29 @@ class ReportGeneratorAgent:
 
     def generate(self, state: AnalystState) -> AnalystState:
         data_analysis = state["agent_outputs"].get(DataAnalystAgent.name, {})
-        social_summary = state["agent_outputs"].get("social_intel")  # Phase 4, not built yet
+        social_summary = summarize_social_intelligence(
+            state["agent_outputs"].get(SocialIntelligenceAgent.name, {})
+        )
         allowed_ids = {document["document_id"] for document in state["documents"]}
         citations = self._rag_agent.query(
             state["goal"], n_results=5, allowed_document_ids=allowed_ids
         )
 
-        output_path = self._reports_dir / state["session_id"] / "report.docx"
+        session_dir = self._reports_dir / state["session_id"]
+        docx_path = session_dir / "report.docx"
+        pptx_path = session_dir / "report.pptx"
 
         try:
             build_report_docx(
-                str(output_path),
+                str(docx_path),
+                goal=state["goal"],
+                documents=list(state["documents"]),
+                data_analysis=data_analysis,
+                rag_citations=citations,
+                social_summary=social_summary,
+            )
+            build_report_pptx(
+                str(pptx_path),
                 goal=state["goal"],
                 documents=list(state["documents"]),
                 data_analysis=data_analysis,
@@ -65,7 +78,8 @@ class ReportGeneratorAgent:
             return state
 
         state["agent_outputs"].setdefault(self.name, {})["report"] = {
-            "path": str(output_path),
+            "path": str(docx_path),
+            "pptx_path": str(pptx_path),
             "citation_count": len(citations),
             # QA/Critic re-reads these to check the report's claims against source data.
             "citations": citations,

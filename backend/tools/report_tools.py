@@ -1,8 +1,48 @@
-"""DOCX report assembly, used by the Report Generator Agent."""
+"""DOCX/PPTX report assembly, used by the Report Generator Agent."""
 
 from pathlib import Path
 
 from docx import Document
+from pptx import Presentation
+
+
+def summarize_social_intelligence(social_outputs: dict) -> dict | None:
+    """Roll the Social Intelligence Agent's per-document output up into
+    post/comment/sentiment counts for the report.
+
+    `social_outputs` is keyed by document_id -> {"posts": [...]} (see
+    agents/social_intel_agent.py). Returns None if there's nothing to
+    summarize, so callers can skip the report section entirely.
+    """
+    post_count = 0
+    sentiment_counts = {"positive": 0, "neutral": 0, "negative": 0}
+
+    for parsed in social_outputs.values():
+        posts = parsed.get("posts", [])
+        post_count += len(posts)
+        for post in posts:
+            for comment in post.get("comments", []):
+                label = comment.get("sentiment", {}).get("label")
+                if label in sentiment_counts:
+                    sentiment_counts[label] += 1
+
+    comment_count = sum(sentiment_counts.values())
+    if post_count == 0 and comment_count == 0:
+        return None
+
+    return {"post_count": post_count, "comment_count": comment_count, **sentiment_counts}
+
+
+def _data_analysis_lines(data_analysis: dict) -> list[str]:
+    lines = []
+    for summary in data_analysis.values():
+        for sheet_name, stats in summary.items():
+            for column, values in stats.items():
+                lines.append(
+                    f"{sheet_name} / {column}: mean={values['mean']}, min={values['min']}, "
+                    f"max={values['max']}, pass_rate={values['pass_rate']}%, n={values['count']}"
+                )
+    return lines
 
 
 def build_report_docx(
@@ -17,7 +57,8 @@ def build_report_docx(
 
     `data_analysis` is keyed by document_id -> {sheet_name: column stats}
     (Data Analyst Agent's output shape); `rag_citations` is the Knowledge/RAG
-    Agent's query hits. Returns the path written to.
+    Agent's query hits; `social_summary` is summarize_social_intelligence()'s
+    output. Returns the path written to.
     """
     doc = Document()
     doc.add_heading("Education AI Analyst — Report", level=0)
@@ -41,7 +82,11 @@ def build_report_docx(
 
     if social_summary:
         doc.add_heading("Social Intelligence (Facebook)", level=1)
-        doc.add_paragraph(str(social_summary))
+        doc.add_paragraph(
+            f"{social_summary['post_count']} post(s), {social_summary['comment_count']} comment(s) — "
+            f"{social_summary['positive']} positive, {social_summary['neutral']} neutral, "
+            f"{social_summary['negative']} negative."
+        )
 
     if rag_citations:
         doc.add_heading("Supporting Excerpts", level=1)
@@ -51,3 +96,67 @@ def build_report_docx(
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     doc.save(output_path)
     return output_path
+
+
+def build_report_pptx(
+    output_path: str,
+    goal: str,
+    documents: list[dict],
+    data_analysis: dict,
+    rag_citations: list[dict],
+    social_summary: dict | None = None,
+) -> str:
+    """Compile the same report content as build_report_docx() as a slide deck.
+
+    Same parameters/shapes as build_report_docx(). Returns the path written to.
+    """
+    prs = Presentation()
+    title_layout = prs.slide_layouts[0]
+    content_layout = prs.slide_layouts[1]
+
+    title_slide = prs.slides.add_slide(title_layout)
+    title_slide.shapes.title.text = "Education AI Analyst — Report"
+    title_slide.placeholders[1].text = f"Goal: {goal}"
+
+    docs_slide = prs.slides.add_slide(content_layout)
+    docs_slide.shapes.title.text = "Source Documents"
+    _fill_bullets(
+        docs_slide.placeholders[1], [f"{d['filename']} ({d['type']})" for d in documents]
+    )
+
+    if data_analysis:
+        analysis_slide = prs.slides.add_slide(content_layout)
+        analysis_slide.shapes.title.text = "Data Analysis"
+        _fill_bullets(analysis_slide.placeholders[1], _data_analysis_lines(data_analysis))
+
+    if social_summary:
+        social_slide = prs.slides.add_slide(content_layout)
+        social_slide.shapes.title.text = "Social Intelligence (Facebook)"
+        _fill_bullets(social_slide.placeholders[1], [
+            f"{social_summary['post_count']} post(s), {social_summary['comment_count']} comment(s)",
+            f"Positive: {social_summary['positive']}",
+            f"Neutral: {social_summary['neutral']}",
+            f"Negative: {social_summary['negative']}",
+        ])
+
+    if rag_citations:
+        citations_slide = prs.slides.add_slide(content_layout)
+        citations_slide.shapes.title.text = "Supporting Excerpts"
+        _fill_bullets(
+            citations_slide.placeholders[1],
+            [f"[{c['filename']}] {c['text'][:200]}" for c in rag_citations],
+        )
+
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    prs.save(output_path)
+    return output_path
+
+
+def _fill_bullets(placeholder, lines: list[str]) -> None:
+    if not lines:
+        placeholder.text_frame.text = "(none)"
+        return
+
+    placeholder.text_frame.text = lines[0]
+    for line in lines[1:]:
+        placeholder.text_frame.add_paragraph().text = line

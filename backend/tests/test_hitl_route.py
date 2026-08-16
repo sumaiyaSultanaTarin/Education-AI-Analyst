@@ -14,6 +14,9 @@ class _FakeLLMClient:
     def chat(self, messages, **kwargs):
         return "PASS"
 
+    def get_last_usage(self):
+        return None
+
 
 def _install_fake_report_graph(monkeypatch, chroma_collection, fake_embed_fn, reports_dir):
     """Swap the lazily-built report graph for one built entirely from fakes.

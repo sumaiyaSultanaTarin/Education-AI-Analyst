@@ -21,15 +21,16 @@ if status["status"] != "report_ready":
     )
     st.stop()
 
-try:
-    content, filename = get_report_file(session_id)
-except httpx.HTTPStatusError as exc:
-    st.error(exc.response.json().get("detail", str(exc)))
-else:
-    st.success("Report approved and ready.")
-    st.download_button(
-        "Download report",
-        data=content,
-        file_name=filename,
-        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    )
+_MIME_TYPES = {
+    "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+}
+
+st.success("Report approved and ready.")
+for fmt, label in (("docx", "Download report (DOCX)"), ("pptx", "Download report (PPTX)")):
+    try:
+        content, filename = get_report_file(session_id, format=fmt)
+    except httpx.HTTPStatusError as exc:
+        st.error(f"{fmt.upper()}: {exc.response.json().get('detail', str(exc))}")
+    else:
+        st.download_button(label, data=content, file_name=filename, mime=_MIME_TYPES[fmt])

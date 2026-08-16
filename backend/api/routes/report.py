@@ -8,8 +8,9 @@ state["agent_outputs"] for every uploaded document.
 """
 
 from pathlib import Path
+from typing import Literal
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
@@ -33,6 +34,7 @@ class ReportRunResponse(BaseModel):
     hitl_status: dict[str, str]
     qa_status: str | None
     report_path: str | None
+    report_pptx_path: str | None
     errors: list[dict]
 
 
@@ -60,10 +62,12 @@ def generate_report(session_id: str) -> ReportRunResponse:
 
 
 @router.get("/{session_id}/report")
-def get_report(session_id: str) -> FileResponse:
+def get_report(
+    session_id: str, format: Literal["docx", "pptx"] = Query("docx")
+) -> FileResponse:
     record = _get_record_or_404(session_id)
     summary = summarize(record)
-    report_path = summary["report_path"]
+    report_path = summary["report_path"] if format == "docx" else summary["report_pptx_path"]
     if report_path is None or not Path(report_path).exists():
         raise HTTPException(status_code=404, detail="Report not generated yet")
     # The draft is written to disk before the graph pauses at hitl_approval,

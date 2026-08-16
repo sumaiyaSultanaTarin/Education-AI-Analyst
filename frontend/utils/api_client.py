@@ -1,8 +1,10 @@
 """Thin HTTP wrapper around the FastAPI backend (backend/api/).
 
 One function per endpoint that actually exists today — see CLAUDE.md and
-docs/architecture.md for the ones that don't yet (WS trace, /messages,
-/graph, /cost): those panels aren't built until that backend work lands.
+docs/architecture.md for the one that still doesn't (WS trace): that panel
+(Execution Trace) needs real backend streaming work not attempted yet.
+/messages, /graph, and /cost all now exist (routes/messages.py,
+routes/graph_viewer.py, routes/cost.py).
 """
 
 import os
@@ -57,12 +59,16 @@ def hitl_action(session_id: str, node: str, action: str, comment: str | None = N
     return response.json()
 
 
-def get_report_file(session_id: str) -> tuple[bytes, str]:
+def get_report_file(session_id: str, format: str = "docx") -> tuple[bytes, str]:
     """Returns (content, filename). Raises httpx.HTTPStatusError (404) if the
-    report isn't generated yet or hasn't been HITL-approved."""
-    response = httpx.get(f"{BASE_URL}/sessions/{session_id}/report", timeout=_TIMEOUT)
+    report isn't generated yet or hasn't been HITL-approved. format is
+    'docx' or 'pptx'."""
+    response = httpx.get(
+        f"{BASE_URL}/sessions/{session_id}/report", params={"format": format}, timeout=_TIMEOUT
+    )
     response.raise_for_status()
-    filename = response.headers.get("content-disposition", "").split("filename=")[-1].strip('"') or "report.docx"
+    default_name = f"report.{format}"
+    filename = response.headers.get("content-disposition", "").split("filename=")[-1].strip('"') or default_name
     return response.content, filename
 
 
@@ -70,5 +76,23 @@ def query_memory(session_id: str, query: str) -> list[dict]:
     response = httpx.get(
         f"{BASE_URL}/sessions/{session_id}/memory", params={"query": query}, timeout=_TIMEOUT
     )
+    response.raise_for_status()
+    return response.json()
+
+
+def get_messages(session_id: str) -> list[dict]:
+    response = httpx.get(f"{BASE_URL}/sessions/{session_id}/messages", timeout=_TIMEOUT)
+    response.raise_for_status()
+    return response.json()
+
+
+def get_graph_definition(session_id: str) -> dict:
+    response = httpx.get(f"{BASE_URL}/sessions/{session_id}/graph", timeout=_TIMEOUT)
+    response.raise_for_status()
+    return response.json()
+
+
+def get_cost(session_id: str) -> dict:
+    response = httpx.get(f"{BASE_URL}/sessions/{session_id}/cost", timeout=_TIMEOUT)
     response.raise_for_status()
     return response.json()

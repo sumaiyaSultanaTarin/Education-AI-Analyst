@@ -65,5 +65,6 @@ def summarize(record: SessionRecord) -> dict:
         "hitl_status": dict(state["hitl_status"]),
         "qa_status": qa.get("status"),
         "report_path": report.get("path"),
+        "report_pptx_path": report.get("pptx_path"),
         "errors": list(state["errors"]),
     }
