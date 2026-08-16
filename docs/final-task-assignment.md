@@ -97,9 +97,9 @@
 
 | Task | Owner |
 |---|---|
-| Unit tests per tool/agent (`backend/tests/`) | **TBD** |
-| FB fallback sample CSV for testing | **TBD** |
-| Integration testing / end-to-end bug bash | **TBD** |
+| Unit tests per tool/agent (`backend/tests/`) | **Tarin** |
+| FB fallback sample CSV for testing | **Tarin** |
+| Integration testing / end-to-end bug bash | **Tarin** |
 
 *Depends on: agents from Phases 2–5 existing.*
 
@@ -109,7 +109,7 @@
 
 | Task | Owner |
 |---|---|
-| 🔴 **HARD TASK:** Multi-service `docker-compose.yml` (backend + frontend + Postgres + Chroma networked) + GitHub Actions CI pipeline running tests/builds on push to `develop` | **TBD** |
+| 🔴 **HARD TASK:** Multi-service `docker-compose.yml` (backend + frontend + Postgres + Chroma networked) + GitHub Actions CI pipeline running tests/builds on push to `develop` | **Tarin** |
 
 *Can be scaffolded early, finalized once services are stable.*
 
@@ -152,10 +152,10 @@ Phase 2 (Tarin: intake agents)
              └──────────────────▶ Phase 6 (Saif: UI)
                                        │
                                        ▼
-                              Phase 7 (TBD: testing)
+                              Phase 7 (Tarin: testing)
                                        │
                                        ▼
-                              Phase 8 (TBD: deployment)
+                              Phase 8 (Tarin: deployment)
                                        │
                                        ▼
                               Phase 10 (All: final polish)
