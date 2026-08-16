@@ -38,3 +38,7 @@ pandas==2.2.3
 
 # Verify these three pins against what's actually resolvable in each
 # teammate's environment before merging — added without a live install here.
+
+# Phase 6 — Streamlit frontend. Uses httpx (already pinned above) as its API
+# client instead of adding `requests` as a second HTTP library.
+streamlit==1.51.0
