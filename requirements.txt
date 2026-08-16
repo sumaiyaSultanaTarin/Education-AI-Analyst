@@ -29,15 +29,20 @@ python-pptx==1.0.2
 python-multipart==0.0.32
 
 # Phase 3 — Knowledge/RAG Agent: local embeddings (OpenRouter doesn't serve
-# embeddings, see CLAUDE.md) + Chroma vector store
+# embeddings, see CLAUDE.md) + Chroma vector store.
+# chromadb pinned to 1.5.9, not the original 0.5.23 — that pin needs building
+# chroma-hnswlib from source and fails on Windows/Python 3.13 (no prebuilt
+# wheel, incomplete MSVC toolchain); 1.5.9 installs clean with no code changes.
 sentence-transformers==3.3.1
-chromadb==0.5.23
+chromadb==1.5.9
 
 # Phase 3 — Data Analyst Agent: pandas over ingested XLSX rows
 pandas==2.2.3
 
-# Verify these three pins against what's actually resolvable in each
-# teammate's environment before merging — added without a live install here.
+# Phase 4 — Social Intelligence Agent: local lexicon-based sentiment scoring,
+# avoids burning free-tier OpenRouter quota on every comment (see gap #3 in
+# docs/architecture.md re: rate limits).
+vaderSentiment==3.3.2
 
 # Phase 6 — Streamlit frontend. Uses httpx (already pinned above) as its API
 # client instead of adding `requests` as a second HTTP library.

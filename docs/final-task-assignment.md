@@ -10,9 +10,9 @@
 | Member | Branch | Role |
 |---|---|---|
 | Tarin | `dev_tarin` | Core backend, agent pipeline foundation |
-| Saif | `dev_saif` | Knowledge, analysis, output generation, UI |
+| Saif | `dev_saif` | Knowledge, analysis, UI |
 | Shohana | `dev_shohana` | Sample data, social intelligence agent, docs |
-| Fahim | `dev_fahim` | Testing, deployment, CI/CD, demo |
+| Fahim | `dev_fahim` | Output generation, testing, deployment, CI/CD, demo |
 
 ---
 
@@ -72,9 +72,9 @@
 
 | Task | Owner |
 |---|---|
-| Report Generator Agent (DOCX/PPTX output with citations) | **Saif** |
-| QA/Critic Agent (fact-checks report against source data) | **Saif** |
-| HITL wiring — `interrupt()` before final report release | **Saif** |
+| Report Generator Agent (DOCX/PPTX output with citations) | **Fahim** |
+| QA/Critic Agent (fact-checks report against source data) | **Fahim** |
+| HITL wiring — `interrupt()` before final report release | **Fahim** |
 
 *Depends on: Phase 3 (needs RAG + analysis outputs to compile).*
 
@@ -145,7 +145,7 @@ Phase 2 (Tarin: intake agents)
    ├──▶ Phase 3 (Saif: RAG + data analysis)
    │         │
    │         ▼
-   │     Phase 5 (Saif: report + QA + HITL)
+   │     Phase 5 (Fahim: report + QA + HITL)
    │         │
    └──▶ Phase 4 (Shohana: social intel)   │
              │                            ▼

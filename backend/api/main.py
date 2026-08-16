@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from api.routes import documents, memory, sessions
+from api.routes import documents, hitl, memory, report, sessions
 from core.logging_config import configure_logging
 
 configure_logging()
@@ -8,6 +8,8 @@ configure_logging()
 app = FastAPI(title="Education AI Analyst", version="0.1.0")
 app.include_router(sessions.router)
 app.include_router(documents.router)
+app.include_router(report.router)
+app.include_router(hitl.router)
 app.include_router(memory.router)
 
 
