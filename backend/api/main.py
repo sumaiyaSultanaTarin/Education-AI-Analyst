@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from api.routes import documents, graph_viewer, hitl, memory, messages, report, sessions
+from api.routes import cost, documents, graph_viewer, hitl, memory, messages, report, sessions
 from core.logging_config import configure_logging
 
 configure_logging()
@@ -13,6 +13,7 @@ app.include_router(hitl.router)
 app.include_router(memory.router)
 app.include_router(messages.router)
 app.include_router(graph_viewer.router)
+app.include_router(cost.router)
 
 
 @app.get("/health")

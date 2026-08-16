@@ -9,6 +9,9 @@ class _FakeLLMClient:
     def chat(self, messages, **kwargs):
         return self._reply
 
+    def get_last_usage(self):
+        return None
+
 
 def _state_with_report(tmp_path):
     state = new_state(session_id="s1", goal="test")
@@ -67,3 +70,51 @@ def test_review_passes_through_on_llm_failure(tmp_path):
     state = agent.review(_state_with_report(tmp_path))
 
     assert state["agent_outputs"]["qa_critic"]["status"] == "pass"
+
+
+def test_review_records_token_usage_on_success(tmp_path):
+    class _MeteredLLMClient:
+        def chat(self, messages, **kwargs):
+            return "PASS"
+
+        def get_last_usage(self):
+            return {"model": "some-model:free", "tokens_in": 120, "tokens_out": 15, "cost_usd": 0.0}
+
+    agent = QACriticAgent(llm_client=_MeteredLLMClient())
+    state = agent.review(_state_with_report(tmp_path))
+
+    usage = state["token_usage"]["qa_critic:some-model:free"]
+    assert usage == {"model": "some-model:free", "tokens_in": 120, "tokens_out": 15, "cost_usd": 0.0}
+
+
+def test_review_passes_through_when_no_llm_client_configured(tmp_path, monkeypatch):
+    """Regression test: get_llm_client() itself can raise (e.g. no
+    OPENROUTER_API_KEY set) — that must degrade to a passed-through verdict
+    like any other LLM failure, not propagate out of review()."""
+
+    def _broken_get_llm_client():
+        raise RuntimeError("no OPENROUTER_API_KEY configured")
+
+    monkeypatch.setattr("agents.qa_critic_agent.get_llm_client", _broken_get_llm_client)
+
+    agent = QACriticAgent(llm_client=None)
+    state = agent.review(_state_with_report(tmp_path))
+
+    assert state["agent_outputs"]["qa_critic"]["status"] == "pass"
+    assert state["token_usage"] == {}
+
+
+def test_review_does_not_record_usage_on_llm_failure(tmp_path):
+    class _BrokenLLMClient:
+        def chat(self, messages, **kwargs):
+            raise RuntimeError("model unavailable")
+
+        def get_last_usage(self):
+            # Would be a bug if this got recorded — it's stale data from
+            # some earlier unrelated call, not from this failed attempt.
+            return {"model": "stale-model", "tokens_in": 999, "tokens_out": 999, "cost_usd": 0.0}
+
+    agent = QACriticAgent(llm_client=_BrokenLLMClient())
+    state = agent.review(_state_with_report(tmp_path))
+
+    assert state["token_usage"] == {}

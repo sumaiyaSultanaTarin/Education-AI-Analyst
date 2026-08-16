@@ -1,10 +1,10 @@
 """Thin HTTP wrapper around the FastAPI backend (backend/api/).
 
 One function per endpoint that actually exists today — see CLAUDE.md and
-docs/architecture.md for the ones that still don't (WS trace, /cost): those
-panels (Execution Trace, Token/Cost Tracker) aren't built until that backend
-work lands. /messages and /graph now exist (routes/messages.py,
-routes/graph_viewer.py).
+docs/architecture.md for the one that still doesn't (WS trace): that panel
+(Execution Trace) needs real backend streaming work not attempted yet.
+/messages, /graph, and /cost all now exist (routes/messages.py,
+routes/graph_viewer.py, routes/cost.py).
 """
 
 import os
@@ -88,5 +88,11 @@ def get_messages(session_id: str) -> list[dict]:
 
 def get_graph_definition(session_id: str) -> dict:
     response = httpx.get(f"{BASE_URL}/sessions/{session_id}/graph", timeout=_TIMEOUT)
+    response.raise_for_status()
+    return response.json()
+
+
+def get_cost(session_id: str) -> dict:
+    response = httpx.get(f"{BASE_URL}/sessions/{session_id}/cost", timeout=_TIMEOUT)
     response.raise_for_status()
     return response.json()

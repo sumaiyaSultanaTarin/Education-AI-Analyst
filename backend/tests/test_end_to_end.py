@@ -32,6 +32,9 @@ class _FakeLLMClient:
     def chat_with_image(self, image_bytes, mime_type, prompt):
         return "RESULT SHEET - transcribed text"
 
+    def get_last_usage(self):
+        return None
+
 
 def _install_fake_report_graph(monkeypatch, chroma_collection, fake_embed_fn, reports_dir):
     rag_agent = KnowledgeRAGAgent(collection=chroma_collection, embed_fn=fake_embed_fn)

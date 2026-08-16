@@ -10,6 +10,7 @@ from pathlib import Path
 
 from agents.data_analyst_agent import DataAnalystAgent
 from agents.report_generator_agent import ReportGeneratorAgent
+from core.cost_tracker import record_usage
 from core.llm_client import LLMClient, get_llm_client
 from core.logging_config import get_logger
 from graph.state import AnalystState
@@ -80,11 +81,21 @@ class QACriticAgent:
         )
 
         try:
+            # get_llm_client() itself can raise (e.g. no API key configured),
+            # so it has to stay inside this try too — this whole method must
+            # degrade to a "pass through unchecked" verdict, never an
+            # uncaught exception out of review().
             client = self._llm_client or get_llm_client()
             reply = client.chat([{"role": "user", "content": prompt}]).strip()
         except Exception as exc:  # noqa: BLE001 - a critic outage shouldn't block the run
             logger.error("QA critic LLM call failed: %s", exc)
             return "pass", f"Critic LLM call failed ({exc}); passed through unchecked."
+
+        # Only reached on success — get_last_usage() reflects whatever
+        # _call_model() last succeeded at, so recording it here (not in a
+        # finally) avoids misattributing a stale prior call's usage to this
+        # one when chat() raises above.
+        record_usage(state, self.name, client.get_last_usage())
 
         if reply.upper().startswith("PASS"):
             return "pass", reply

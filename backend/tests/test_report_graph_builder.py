@@ -15,6 +15,9 @@ class _FakeLLMClient:
     def chat(self, messages, **kwargs):
         return self._reply
 
+    def get_last_usage(self):
+        return None
+
 
 def _base_state(session_id="s1"):
     state = new_state(session_id=session_id, goal="summarize term")

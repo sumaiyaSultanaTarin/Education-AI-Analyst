@@ -7,6 +7,9 @@ class _FakeLLMClient:
     def chat_with_image(self, image_bytes, mime_type, prompt):
         return "RESULT SHEET - Spring 2025"
 
+    def get_last_usage(self):
+        return None
+
 
 def _doc(sample_docs_dir, filename, doc_type):
     return {
