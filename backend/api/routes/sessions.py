@@ -33,7 +33,11 @@ class SessionCreateRequest(BaseModel):
 class SessionResponse(BaseModel):
     session_id: str
     goal: str
-    status: Literal["planned", "completed"]
+    # Must match SessionRecord.status (api/session_store.py) — that type grew
+    # "awaiting_approval"/"report_ready" for the Phase 5 report/HITL pipeline,
+    # so any session that reached generate-report used to 500 here on the
+    # next GET, since those two values failed this narrower literal.
+    status: Literal["planned", "completed", "awaiting_approval", "report_ready"]
     plan: list[dict]
     documents: list[dict]
     agent_outputs: dict

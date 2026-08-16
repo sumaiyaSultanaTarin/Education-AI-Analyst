@@ -25,7 +25,7 @@ class AgentMessage(TypedDict):
 class DocumentRef(TypedDict):
     document_id: str
     filename: str
-    type: Literal["pdf", "docx", "pptx", "xlsx", "image"]
+    type: Literal["pdf", "docx", "pptx", "xlsx", "image", "social_csv"]
     path: str
 
 
