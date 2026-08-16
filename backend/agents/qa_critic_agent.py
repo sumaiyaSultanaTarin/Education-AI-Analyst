@@ -35,7 +35,11 @@ class QACriticAgent:
     name = "qa_critic"
 
     def __init__(self, llm_client: LLMClient | None = None) -> None:
-        self._llm_client = llm_client or get_llm_client()
+        # Resolved lazily in _llm_verdict, not here — constructing the
+        # default client touches OpenRouter credentials, and this agent is
+        # built as a side effect of importing api.report_pipeline (see
+        # get_report_graph()), which must stay import-safe with no API key.
+        self._llm_client = llm_client
 
     def review(self, state: AnalystState) -> AnalystState:
         report = state["agent_outputs"].get(ReportGeneratorAgent.name, {}).get("report")
@@ -76,7 +80,8 @@ class QACriticAgent:
         )
 
         try:
-            reply = self._llm_client.chat([{"role": "user", "content": prompt}]).strip()
+            client = self._llm_client or get_llm_client()
+            reply = client.chat([{"role": "user", "content": prompt}]).strip()
         except Exception as exc:  # noqa: BLE001 - a critic outage shouldn't block the run
             logger.error("QA critic LLM call failed: %s", exc)
             return "pass", f"Critic LLM call failed ({exc}); passed through unchecked."

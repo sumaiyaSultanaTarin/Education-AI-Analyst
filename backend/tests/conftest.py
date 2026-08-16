@@ -1,4 +1,5 @@
 import hashlib
+import uuid
 from pathlib import Path
 
 import chromadb
@@ -32,6 +33,12 @@ def fake_embed_fn():
 
 @pytest.fixture
 def chroma_collection():
-    """An ephemeral, in-memory Chroma collection — no disk persistence."""
+    """An ephemeral, in-memory Chroma collection — no disk persistence.
+
+    EphemeralClient() shares its underlying in-process system cache across
+    calls with identical settings, so a fixed collection name would leak
+    data between tests within the same run. A random name per test keeps
+    each test's collection isolated regardless of that caching.
+    """
     client = chromadb.EphemeralClient()
-    return client.get_or_create_collection("test-collection")
+    return client.get_or_create_collection(f"test-collection-{uuid.uuid4().hex}")

@@ -7,11 +7,11 @@ from fastapi import APIRouter, HTTPException
 from langgraph.types import Command
 from pydantic import BaseModel
 
+from api import report_pipeline
 from api.report_pipeline import (
     SessionNotFoundError,
     apply_result,
     get_record,
-    report_graph,
     summarize,
     thread_config,
 )
@@ -41,7 +41,7 @@ def _resume(session_id: str, resume_value: dict) -> ReportRunResponse:
     except SessionNotFoundError:
         raise HTTPException(status_code=404, detail="Session not found") from None
 
-    report_graph.invoke(Command(resume=resume_value), config=thread_config(session_id))
+    report_pipeline.get_report_graph().invoke(Command(resume=resume_value), config=thread_config(session_id))
     apply_result(session_id, record)
     return ReportRunResponse(**summarize(record))
 

@@ -6,12 +6,24 @@ so both route modules resume against the exact same graph instance and
 LangGraph thread (thread_id == session_id).
 """
 
+from functools import lru_cache
+
 from agents.qa_critic_agent import QACriticAgent
 from agents.report_generator_agent import ReportGeneratorAgent
 from api.session_store import SessionRecord, sessions
 from graph.report_graph_builder import build_report_graph
 
-report_graph = build_report_graph()
+
+@lru_cache(maxsize=1)
+def get_report_graph():
+    """Build the compiled report graph on first use, not at import time.
+
+    Building eagerly at module scope would construct QACriticAgent (and thus
+    the OpenRouter client) as a side effect of merely importing this module —
+    breaking every route/test that imports api.main whenever no API key is
+    configured yet.
+    """
+    return build_report_graph()
 
 
 class SessionNotFoundError(Exception):
@@ -38,7 +50,7 @@ def apply_result(session_id: str, record: SessionRecord) -> None:
     detect "still paused" — relying on exactly what keys invoke() merges into
     its return dict around an interrupt is not something worth hard-coding.
     """
-    snapshot = report_graph.get_state(thread_config(session_id))
+    snapshot = get_report_graph().get_state(thread_config(session_id))
     record.state = snapshot.values
     record.status = "awaiting_approval" if snapshot.next else "report_ready"
 
