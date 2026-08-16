@@ -43,3 +43,7 @@ pandas==2.2.3
 # avoids burning free-tier OpenRouter quota on every comment (see gap #3 in
 # docs/architecture.md re: rate limits).
 vaderSentiment==3.3.2
+
+# Phase 6 — Streamlit frontend. Uses httpx (already pinned above) as its API
+# client instead of adding `requests` as a second HTTP library.
+streamlit==1.51.0
