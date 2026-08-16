@@ -97,9 +97,9 @@
 
 | Task | Owner |
 |---|---|
-| Unit tests per tool/agent (`backend/tests/`) | **Fahim** |
-| FB fallback sample CSV for testing | **Fahim** |
-| Integration testing / end-to-end bug bash | **Fahim** |
+| Unit tests per tool/agent (`backend/tests/`) | **TBD** |
+| FB fallback sample CSV for testing | **TBD** |
+| Integration testing / end-to-end bug bash | **TBD** |
 
 *Depends on: agents from Phases 2–5 existing.*
 
@@ -109,7 +109,7 @@
 
 | Task | Owner |
 |---|---|
-| 🔴 **HARD TASK:** Multi-service `docker-compose.yml` (backend + frontend + Postgres + Chroma networked) + GitHub Actions CI pipeline running tests/builds on push to `develop` | **Fahim** |
+| 🔴 **HARD TASK:** Multi-service `docker-compose.yml` (backend + frontend + Postgres + Chroma networked) + GitHub Actions CI pipeline running tests/builds on push to `develop` | **TBD** |
 
 *Can be scaffolded early, finalized once services are stable.*
 
@@ -119,8 +119,8 @@
 
 | Task | Owner |
 |---|---|
-| Keep `docs/architecture.md` and ERD updated as schema evolves | **Shohana** |
-| Demo script / presentation slides | **Fahim** |
+| Keep `docs/architecture.md` and ERD updated as schema evolves | **TBD** |
+| Demo script / presentation slides | **TBD** |
 
 *Ongoing throughout, finalized at the end.*
 
@@ -152,10 +152,10 @@ Phase 2 (Tarin: intake agents)
              └──────────────────▶ Phase 6 (Saif: UI)
                                        │
                                        ▼
-                              Phase 7 (Fahim: testing)
+                              Phase 7 (TBD: testing)
                                        │
                                        ▼
-                              Phase 8 (Fahim: deployment)
+                              Phase 8 (TBD: deployment)
                                        │
                                        ▼
                               Phase 10 (All: final polish)
