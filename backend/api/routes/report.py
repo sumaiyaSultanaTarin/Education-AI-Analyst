@@ -33,6 +33,8 @@ class ReportRunResponse(BaseModel):
     hitl_status: dict[str, str]
     qa_status: str | None
     report_path: str | None
+    messages: list[dict]
+    token_usage: dict
     errors: list[dict]
 
 

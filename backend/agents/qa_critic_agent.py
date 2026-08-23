@@ -86,6 +86,12 @@ class QACriticAgent:
             logger.error("QA critic LLM call failed: %s", exc)
             return "pass", f"Critic LLM call failed ({exc}); passed through unchecked."
 
+        # getattr, not client.last_usage: test fakes for this agent only
+        # implement .chat(), not the real LLMClient's usage-tracking attribute.
+        usage = getattr(client, "last_usage", None)
+        if usage is not None:
+            state["token_usage"][f"{self.name}-{len(state['token_usage'])}"] = usage
+
         if reply.upper().startswith("PASS"):
             return "pass", reply
         return "fail", reply

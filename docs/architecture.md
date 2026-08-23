@@ -248,11 +248,11 @@ The Supervisor is a **hub node**: every worker returns control to it rather than
 | `POST` | `/sessions/{id}/documents` | Upload a document (multipart) |
 | `POST` | `/sessions/{id}/run` | Kick off the LangGraph run for this session |
 | `GET` | `/sessions/{id}` | Session status, current node, plan |
-| `WS` | `/sessions/{id}/trace` | Live execution trace stream (node enter/exit, tool calls) |
-| `GET` | `/sessions/{id}/messages` | Agent-to-agent communication log |
-| `GET` | `/sessions/{id}/graph` | Current graph definition (mermaid/JSON) for the Graph Viewer |
-| `GET` | `/sessions/{id}/cost` | Token usage + cost breakdown per agent/model |
-| `GET` | `/sessions/{id}/errors` | Structured error log |
+| `WS` | ~~`/sessions/{id}/trace`~~ | **Not implemented** — the intake/report graphs run synchronously to completion within one request (see `graph_builder.py`, `report_pipeline.py`) and don't emit incremental node-enter/exit events yet. `GET /sessions/{id}/messages` below is polled instead. |
+| `GET` | `/sessions/{id}/messages` | Agent-to-agent communication log — implemented (`api/routes/observability.py`) |
+| `GET` | `/sessions/{id}/graph` | Mermaid source for both compiled graphs, for the Graph Viewer — implemented (`api/routes/observability.py`) |
+| `GET` | `/sessions/{id}/cost` | Token usage + cost breakdown per LLM call — implemented (`api/routes/observability.py`); only `qa_critic`/`vision_ocr` call an LLM, and every fallback model is free-tier so `cost_usd` is genuinely `$0.00` today |
+| `GET` | `/sessions/{id}/errors` | Structured error log — reused from `GET /sessions/{id}`'s `errors` field instead of a dedicated route (no separate error store exists) |
 | `POST` | `/sessions/{id}/hitl/{node}/approve` | Resume a paused graph |
 | `POST` | `/sessions/{id}/hitl/{node}/reject` | Reject + optional edit instructions |
 | `POST` | `/sessions/{id}/hitl/{node}/retry` | Re-run the failed/paused node |

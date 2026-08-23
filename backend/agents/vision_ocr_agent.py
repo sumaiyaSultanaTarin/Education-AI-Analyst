@@ -8,7 +8,7 @@ Ingestion Agent's error handling.
 
 from datetime import datetime, timezone
 
-from core.llm_client import LLMClient
+from core.llm_client import LLMClient, get_llm_client
 from core.logging_config import get_logger
 from graph.state import AnalystState, DocumentRef
 from tools.ocr_tools import extract_text_from_image
@@ -29,7 +29,12 @@ class VisionOCRAgent:
             )
 
         try:
-            text = extract_text_from_image(document["path"], llm_client=self._llm_client)
+            # Resolved inside the try (not passed straight through) so both a
+            # bad/missing API key (raised by get_llm_client() itself) and a
+            # failed OCR call land in the same ErrorRecord path — and so
+            # last_usage can be read off the same instance afterward.
+            client = self._llm_client or get_llm_client()
+            text = extract_text_from_image(document["path"], llm_client=client)
         except Exception as exc:  # noqa: BLE001 - convert to ErrorRecord, don't crash the run
             logger.error("Failed to OCR %s: %s", document["filename"], exc)
             state["errors"].append({
@@ -40,6 +45,12 @@ class VisionOCRAgent:
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             })
             return state
+
+        # getattr, not client.last_usage: test fakes for this agent only
+        # implement .chat_with_image(), not the real LLMClient's usage attribute.
+        usage = getattr(client, "last_usage", None)
+        if usage is not None:
+            state["token_usage"][f"{self.name}-{len(state['token_usage'])}"] = usage
 
         state["agent_outputs"].setdefault(self.name, {})[document["document_id"]] = {
             "text": text

@@ -23,6 +23,19 @@ class AllModelsFailedError(RuntimeError):
     """Raised when every model in the fallback list failed."""
 
 
+# $/1K-token estimates for cost display. Every model in
+# Settings.openrouter_fallback_models is a ":free" OpenRouter model, so this
+# is empty by default and every call legitimately costs $0.00 — the table
+# exists so a paid model added to the fallback list later shows a real
+# estimate instead of a silently wrong $0.00.
+_PRICING_PER_1K_USD: dict[str, tuple[float, float]] = {}
+
+
+def _estimate_cost_usd(model: str, tokens_in: int, tokens_out: int) -> float:
+    price_in, price_out = _PRICING_PER_1K_USD.get(model, (0.0, 0.0))
+    return round((tokens_in / 1000) * price_in + (tokens_out / 1000) * price_out, 6)
+
+
 class LLMClient:
     def __init__(self, settings: Settings | None = None) -> None:
         self._settings = settings or get_settings()
@@ -30,6 +43,12 @@ class LLMClient:
             api_key=self._settings.openrouter_api_key,
             base_url=self._settings.openrouter_base_url,
         )
+        # Set after every successful _call_model — read by callers (e.g.
+        # QACriticAgent, VisionOCRAgent) right after a chat()/chat_with_image()
+        # call to attribute token usage to that call in AnalystState.token_usage.
+        # None until the first successful call, or if the provider's response
+        # didn't include a usage block.
+        self.last_usage: dict | None = None
 
     def chat(self, messages: list[dict], **kwargs) -> str:
         """Send a chat completion request, trying each fallback model in order."""
@@ -87,6 +106,15 @@ class LLMClient:
             messages=messages,
             **kwargs,
         )
+        if response.usage is not None:
+            tokens_in = response.usage.prompt_tokens
+            tokens_out = response.usage.completion_tokens
+            self.last_usage = {
+                "model": model,
+                "tokens_in": tokens_in,
+                "tokens_out": tokens_out,
+                "cost_usd": _estimate_cost_usd(model, tokens_in, tokens_out),
+            }
         return response.choices[0].message.content or ""
 
 

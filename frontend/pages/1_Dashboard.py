@@ -4,58 +4,71 @@ import httpx
 import streamlit as st
 from utils.api_client import generate_report, get_session, run_intake, upload_document
 from utils.session_state import require_session_id
+from utils.ui import inject_base_styles, page_header, status_badge
 
-st.set_page_config(page_title="Dashboard", page_icon="📊")
+st.set_page_config(page_title="Dashboard", page_icon="📊", layout="wide")
+inject_base_styles()
 session_id = require_session_id()
-st.title("Dashboard")
+page_header("📊", "Dashboard", f"Session `{session_id}`")
 
-record = get_session(session_id)
-st.write(f"**Goal:** {record['goal']}")
-st.write(f"**Status:** {record['status']}")
+with st.spinner("Loading session..."):
+    record = get_session(session_id)
+col_goal, col_status = st.columns([3, 1])
+col_goal.markdown(f"**Goal:** {record['goal']}")
+col_status.markdown(f"**Status:** {status_badge(record['status'])}", unsafe_allow_html=True)
 
-st.subheader("Documents")
-uploaded_files = st.file_uploader(
-    "Upload documents (PDF, DOCX, PPTX, XLSX, PNG/JPG)", accept_multiple_files=True
-)
-if uploaded_files and st.button("Upload"):
-    for file in uploaded_files:
-        try:
-            upload_document(session_id, file.name, file.getvalue(), file.type or "application/octet-stream")
-        except httpx.HTTPStatusError as exc:
-            st.error(f"{file.name}: {exc.response.json().get('detail', exc)}")
-        else:
-            st.success(f"Uploaded {file.name}")
-    st.rerun()
-
-if record["documents"]:
-    st.table(
-        [{"filename": doc["filename"], "type": doc["type"]} for doc in record["documents"]]
+with st.container(border=True):
+    st.subheader("📁 Documents")
+    uploaded_files = st.file_uploader(
+        "Upload documents (PDF, DOCX, PPTX, XLSX, PNG/JPG)", accept_multiple_files=True
     )
-else:
-    st.caption("No documents uploaded yet.")
+    if uploaded_files and st.button("Upload", type="primary"):
+        with st.spinner("Uploading..."):
+            for file in uploaded_files:
+                try:
+                    upload_document(session_id, file.name, file.getvalue(), file.type or "application/octet-stream")
+                except httpx.HTTPStatusError as exc:
+                    st.error(f"{file.name}: {exc.response.json().get('detail', exc)}")
+                else:
+                    st.toast(f"Uploaded {file.name}", icon="✅")
+        st.rerun()
 
-st.subheader("Run intake")
-st.caption("Extracts text/tables from every uploaded document (Document Ingestion + Vision/OCR agents).")
-if st.button("Run intake", disabled=not record["documents"]):
-    with st.spinner("Running intake..."):
-        result = run_intake(session_id)
-    if result["errors"]:
-        st.warning(f"Intake finished with {len(result['errors'])} error(s) — see Logs/Errors.")
+    if record["documents"]:
+        st.table(
+            [{"filename": doc["filename"], "type": doc["type"]} for doc in record["documents"]]
+        )
     else:
-        st.success("Intake completed with no errors.")
-    st.json(result["agent_outputs"], expanded=False)
+        st.caption("No documents uploaded yet.")
 
-st.subheader("Generate report")
-st.caption("Runs Data Analyst → Knowledge/RAG → Report Generator → QA/Critic, then pauses for HITL approval.")
-if st.button("Generate report", disabled=record["status"] != "completed"):
-    with st.spinner("Generating report (this calls an LLM for QA — may take a moment)..."):
-        try:
-            status = generate_report(session_id)
-        except httpx.HTTPStatusError as exc:
-            st.error(exc.response.json().get("detail", str(exc)))
-        else:
-            st.session_state["report_status"] = status
-            st.success(f"Report status: {status['status']} (QA: {status['qa_status']})")
-            st.info("Continue on the HITL Controls page to approve/reject.")
-if record["status"] != "completed":
-    st.caption("Run intake first.")
+col_intake, col_report = st.columns(2, gap="large")
+
+with col_intake:
+    with st.container(border=True):
+        st.subheader("⚙️ Run intake")
+        st.caption("Extracts text/tables from every uploaded document (Document Ingestion + Vision/OCR agents).")
+        if st.button("Run intake", disabled=not record["documents"], use_container_width=True):
+            with st.spinner("Running intake..."):
+                result = run_intake(session_id)
+            if result["errors"]:
+                st.warning(f"Intake finished with {len(result['errors'])} error(s) — see Logs/Errors.")
+            else:
+                st.toast("Intake completed with no errors.", icon="✅")
+            with st.expander("Agent outputs", expanded=False):
+                st.json(result["agent_outputs"])
+
+with col_report:
+    with st.container(border=True):
+        st.subheader("📝 Generate report")
+        st.caption("Runs Data Analyst → Knowledge/RAG → Report Generator → QA/Critic, then pauses for HITL approval.")
+        if st.button("Generate report", disabled=record["status"] != "completed", type="primary", use_container_width=True):
+            with st.spinner("Generating report (this calls an LLM for QA — may take a moment)..."):
+                try:
+                    status = generate_report(session_id)
+                except httpx.HTTPStatusError as exc:
+                    st.error(exc.response.json().get("detail", str(exc)))
+                else:
+                    st.session_state["report_status"] = status
+                    st.success(f"Report status: {status['status']} (QA: {status['qa_status']})")
+                    st.info("Continue on the HITL Controls page to approve/reject.")
+        if record["status"] != "completed":
+            st.caption("Run intake first.")

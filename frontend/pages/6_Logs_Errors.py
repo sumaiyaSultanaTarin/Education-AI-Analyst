@@ -8,12 +8,15 @@ returned by GET /sessions/{id}, so this reuses that instead of adding one.
 import streamlit as st
 from utils.api_client import get_session
 from utils.session_state import require_session_id
+from utils.ui import inject_base_styles, page_header
 
-st.set_page_config(page_title="Logs / Errors", page_icon="🚨")
+st.set_page_config(page_title="Logs / Errors", page_icon="🚨", layout="wide")
+inject_base_styles()
 session_id = require_session_id()
-st.title("Logs / Errors")
+page_header("🚨", "Logs / Errors")
 
-record = get_session(session_id)
+with st.spinner("Loading logs..."):
+    record = get_session(session_id)
 errors = record["errors"]
 
 report_status = st.session_state.get("report_status")
@@ -24,4 +27,5 @@ if not errors:
     st.success("No errors recorded for this session.")
 else:
     st.error(f"{len(errors)} error(s)")
-    st.table(errors)
+    with st.container(border=True):
+        st.table(errors)

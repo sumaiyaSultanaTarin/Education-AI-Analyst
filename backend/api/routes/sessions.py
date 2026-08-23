@@ -41,6 +41,8 @@ class SessionResponse(BaseModel):
     plan: list[dict]
     documents: list[dict]
     agent_outputs: dict
+    messages: list[dict]
+    token_usage: dict
     errors: list[dict]
     created_at: str
 
@@ -54,6 +56,8 @@ def _to_response(record: SessionRecord) -> SessionResponse:
         plan=list(state["plan"]),
         documents=list(state["documents"]),
         agent_outputs=dict(state["agent_outputs"]),
+        messages=list(state["messages"]),
+        token_usage=dict(state["token_usage"]),
         errors=list(state["errors"]),
         created_at=record.created_at,
     )

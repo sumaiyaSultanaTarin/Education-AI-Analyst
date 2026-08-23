@@ -7,13 +7,15 @@ place that sets it.
 import httpx
 import streamlit as st
 from utils.api_client import BASE_URL, create_session, get_session
+from utils.ui import inject_base_styles, page_header
 
-st.set_page_config(page_title="Education AI Analyst", page_icon="🎓")
-st.title("Education AI Analyst")
-st.caption(f"Backend: {BASE_URL}")
+st.set_page_config(page_title="Education AI Analyst", page_icon="🎓", layout="wide")
+inject_base_styles()
+page_header("🎓", "Education AI Analyst", f"Backend: {BASE_URL}")
 
 try:
-    httpx.get(f"{BASE_URL}/health", timeout=5.0).raise_for_status()
+    with st.spinner("Connecting to backend..."):
+        httpx.get(f"{BASE_URL}/health", timeout=5.0).raise_for_status()
 except httpx.HTTPError:
     st.error(
         "Can't reach the backend. Start it with `cd backend && uvicorn api.main:app --reload` "
@@ -23,43 +25,51 @@ except httpx.HTTPError:
 
 active_id = st.session_state.get("session_id")
 if active_id:
-    st.success(f"Active session: `{active_id}`")
-    if st.button("Start a new session instead"):
-        st.session_state.pop("session_id", None)
-        st.session_state.pop("report_status", None)
-        st.rerun()
-
-st.subheader("Create a new session")
-with st.form("create_session"):
-    goal = st.text_area("Goal", placeholder="Summarize this term's enrollment and results")
-    user_id = st.text_input("User ID", value="demo-user")
-    submitted = st.form_submit_button("Create session")
-
-if submitted:
-    if not goal.strip():
-        st.error("Goal can't be empty.")
-    else:
-        record = create_session(goal, user_id)
-        st.session_state["session_id"] = record["session_id"]
-        st.session_state["report_status"] = None
-        st.success(f"Created session `{record['session_id']}`. Head to Dashboard to upload documents.")
-        st.rerun()
-
-st.subheader("Resume an existing session")
-with st.form("resume_session"):
-    existing_id = st.text_input("Session ID")
-    resumed = st.form_submit_button("Resume")
-
-if resumed:
-    if not existing_id.strip():
-        st.error("Session ID can't be empty.")
-    else:
-        try:
-            get_session(existing_id)
-        except httpx.HTTPStatusError:
-            st.error("No session found with that ID.")
-        else:
-            st.session_state["session_id"] = existing_id
-            st.session_state["report_status"] = None
-            st.success(f"Resumed session `{existing_id}`.")
+    with st.container(border=True):
+        st.markdown(f"**Active session:** `{active_id}`")
+        if st.button("Start a new session instead"):
+            st.session_state.pop("session_id", None)
+            st.session_state.pop("report_status", None)
             st.rerun()
+    st.write("")
+
+col_create, col_resume = st.columns(2, gap="large")
+
+with col_create:
+    st.subheader("Create a new session")
+    with st.container(border=True):
+        with st.form("create_session"):
+            goal = st.text_area("Goal", placeholder="Summarize this term's enrollment and results")
+            user_id = st.text_input("User ID", value="demo-user")
+            submitted = st.form_submit_button("Create session", type="primary", use_container_width=True)
+
+        if submitted:
+            if not goal.strip():
+                st.error("Goal can't be empty.")
+            else:
+                record = create_session(goal, user_id)
+                st.session_state["session_id"] = record["session_id"]
+                st.session_state["report_status"] = None
+                st.toast(f"Created session `{record['session_id']}`", icon="✅")
+                st.rerun()
+
+with col_resume:
+    st.subheader("Resume an existing session")
+    with st.container(border=True):
+        with st.form("resume_session"):
+            existing_id = st.text_input("Session ID")
+            resumed = st.form_submit_button("Resume", use_container_width=True)
+
+        if resumed:
+            if not existing_id.strip():
+                st.error("Session ID can't be empty.")
+            else:
+                try:
+                    get_session(existing_id)
+                except httpx.HTTPStatusError:
+                    st.error("No session found with that ID.")
+                else:
+                    st.session_state["session_id"] = existing_id
+                    st.session_state["report_status"] = None
+                    st.toast(f"Resumed session `{existing_id}`", icon="✅")
+                    st.rerun()

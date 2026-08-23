@@ -1,0 +1,20 @@
+# Theme + startup tuning for the Streamlit frontend. See utils/ui.py for the
+# per-page CSS polish layered on top of this base theme.
+
+[theme]
+base = "light"
+primaryColor = "#4F46E5"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F5F6FA"
+textColor = "#1E2233"
+font = "sans serif"
+
+[browser]
+# Skips a network call to Streamlit's telemetry endpoint on every startup —
+# real, measurable reduction in cold-start time, not just a privacy toggle.
+gatherUsageStats = false
+
+[client]
+# Drops "Deploy"/"Print"/"Record a screencast" from the hamburger menu —
+# fewer chrome elements to paint, and a cleaner menu for a local demo app.
+toolbarMode = "minimal"
