@@ -11,7 +11,7 @@ from typing import Literal
 from fastapi import APIRouter, HTTPException, UploadFile
 from pydantic import BaseModel
 
-from api.session_store import sessions
+from api.session_store import save_session, sessions
 from core.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -68,6 +68,7 @@ async def upload_document(session_id: str, file: UploadFile) -> DocumentResponse
         "type": doc_type,
         "path": str(dest_path),
     })
+    save_session(session_id, record)
 
     logger.info("Uploaded %s (%s) to session %s", file.filename, doc_type, session_id)
     return DocumentResponse(document_id=document_id, filename=file.filename, type=doc_type)
