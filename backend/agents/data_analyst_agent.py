@@ -11,6 +11,7 @@ from agents.document_ingestion_agent import DocumentIngestionAgent
 from core.logging_config import get_logger
 from graph.state import AnalystState, DocumentRef
 from tools.data_analysis_tools import sheets_to_dataframes, summarize_numeric_columns
+from tools.web_search_tools import search_web
 
 logger = get_logger(__name__)
 
@@ -57,8 +58,40 @@ class DataAnalystAgent:
         return state
 
     def analyze_all(self, state: AnalystState) -> AnalystState:
-        """Analyze every xlsx document in state["documents"] — used as a report-graph node."""
+        """Analyze every xlsx document in state["documents"], then add one
+        web-search pass for external benchmark context — used as a
+        report-graph node.
+        """
         for document in state["documents"]:
             if document["type"] == "xlsx":
                 state = self.analyze(state, document)
+        return self._add_web_context(state)
+
+    def _add_web_context(self, state: AnalystState) -> AnalystState:
+        """One search for benchmark context relevant to state["goal"] — not
+        per-document, since the goal (not any single file) is what frames
+        what's worth benchmarking against. No-ops (records an ErrorRecord,
+        doesn't raise) when TAVILY_API_KEY isn't configured — same
+        degrade-gracefully pattern as every other optional external call.
+        """
+        try:
+            results = search_web(f"{state['goal']} benchmark statistics")
+        except Exception as exc:  # noqa: BLE001 - convert to ErrorRecord, don't crash the run
+            logger.warning("Web search context skipped: %s", exc)
+            state["errors"].append({
+                "agent_name": self.name,
+                "document_id": None,
+                "error_type": type(exc).__name__,
+                "message": f"Web search context: {exc}",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            })
+            return state
+
+        state["agent_outputs"].setdefault(self.name, {})["web_context"] = results
+        state["messages"].append({
+            "from_agent": self.name,
+            "to_agent": "supervisor",
+            "content": f"Found {len(results)} external benchmark result(s) for context.",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        })
         return state
