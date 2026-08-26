@@ -13,7 +13,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from agents.supervisor import SupervisorAgent
-from api.session_store import SessionRecord, sessions
+from api.session_store import SessionRecord, save_session, sessions
 from core.logging_config import get_logger
 from graph.graph_builder import build_graph
 from graph.state import new_state
@@ -77,6 +77,7 @@ def create_session(payload: SessionCreateRequest) -> SessionResponse:
     state = _supervisor.create_plan(state)
     record = SessionRecord(state=state, created_at=datetime.now(timezone.utc).isoformat())
     sessions[session_id] = record
+    save_session(session_id, record)
 
     logger.info("Created session %s for user %s", session_id, payload.user_id)
     return _to_response(record)
@@ -101,5 +102,6 @@ def run_session(session_id: str) -> SessionResponse:
     )
     record.state = _graph.invoke(record.state)
     record.status = "completed"
+    save_session(session_id, record)
 
     return _to_response(record)
