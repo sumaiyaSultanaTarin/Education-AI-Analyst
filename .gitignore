@@ -14,6 +14,9 @@ data/uploads/*
 data/chroma_db/*
 !data/chroma_db/.gitkeep
 
-# local SQLite dev DB
+# local SQLite dev DB — -shm/-wal are SQLite's WAL-mode sidecar files,
+# created alongside data/checkpoints.db (langgraph-checkpoint-sqlite)
 *.sqlite3
 *.db
+*.db-shm
+*.db-wal
