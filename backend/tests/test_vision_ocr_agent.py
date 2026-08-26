@@ -35,6 +35,23 @@ def test_process_image(sample_docs_dir):
     assert state["errors"] == []
 
 
+def test_process_image_records_token_usage_when_client_reports_it(sample_docs_dir):
+    class _MeteredLLMClient:
+        last_usage = {"model": "fake/vision-model", "tokens_in": 200, "tokens_out": 15, "cost_usd": 0.0}
+
+        def chat_with_image(self, image_bytes, mime_type, prompt):
+            return "Attendance Note - Week 6"
+
+    state = new_state(session_id="s1", goal="test ocr")
+    agent = VisionOCRAgent(llm_client=_MeteredLLMClient())
+    doc = _doc(sample_docs_dir, "scanned_attendance_note.png")
+
+    state = agent.process_image(state, doc)
+
+    assert len(state["token_usage"]) == 1
+    assert list(state["token_usage"].values())[0] == _MeteredLLMClient.last_usage
+
+
 def test_process_image_missing_file_records_error(sample_docs_dir):
     state = new_state(session_id="s1", goal="test ocr")
     agent = VisionOCRAgent(llm_client=_FakeLLMClient())

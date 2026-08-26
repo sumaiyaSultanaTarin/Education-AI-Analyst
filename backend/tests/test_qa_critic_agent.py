@@ -61,6 +61,20 @@ def test_review_fails_when_no_report_exists():
     assert "No report" in state["agent_outputs"]["qa_critic"]["feedback"]
 
 
+def test_review_records_token_usage_when_client_reports_it(tmp_path):
+    class _MeteredLLMClient:
+        last_usage = {"model": "fake/model", "tokens_in": 40, "tokens_out": 8, "cost_usd": 0.0}
+
+        def chat(self, messages, **kwargs):
+            return "PASS"
+
+    agent = QACriticAgent(llm_client=_MeteredLLMClient())
+    state = agent.review(_state_with_report(tmp_path))
+
+    assert len(state["token_usage"]) == 1
+    assert list(state["token_usage"].values())[0] == _MeteredLLMClient.last_usage
+
+
 def test_review_passes_through_on_llm_failure(tmp_path):
     class _BrokenLLMClient:
         def chat(self, messages, **kwargs):

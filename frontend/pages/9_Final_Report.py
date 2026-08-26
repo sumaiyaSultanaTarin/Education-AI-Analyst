@@ -4,10 +4,12 @@ import httpx
 import streamlit as st
 from utils.api_client import get_report_file
 from utils.session_state import require_session_id
+from utils.ui import inject_base_styles, page_header
 
-st.set_page_config(page_title="Final Report", page_icon="📄")
+st.set_page_config(page_title="Final Report", page_icon="📄", layout="wide")
+inject_base_styles()
 session_id = require_session_id()
-st.title("Final Report")
+page_header("📄", "Final Report")
 
 status = st.session_state.get("report_status")
 if status is None:
@@ -26,11 +28,28 @@ _MIME_TYPES = {
     "pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
 }
 
-st.success("Report approved and ready.")
-for fmt, label in (("docx", "Download report (DOCX)"), ("pptx", "Download report (PPTX)")):
-    try:
-        content, filename = get_report_file(session_id, format=fmt)
-    except httpx.HTTPStatusError as exc:
-        st.error(f"{fmt.upper()}: {exc.response.json().get('detail', str(exc))}")
-    else:
-        st.download_button(label, data=content, file_name=filename, mime=_MIME_TYPES[fmt])
+with st.container(border=True):
+    st.success("✅ Report approved and ready.")
+    for fmt, label, is_primary in (
+        ("docx", "⬇️ Download report (DOCX)", True),
+        ("pptx", "⬇️ Download report (PPTX)", False),
+    ):
+        try:
+            with st.spinner(f"Loading {fmt.upper()} report..."):
+                content, filename = get_report_file(session_id, format=fmt)
+        except httpx.HTTPStatusError as exc:
+            st.error(f"{fmt.upper()}: {exc.response.json().get('detail', str(exc))}")
+            continue
+        # download_button returns True on the rerun right after it's clicked
+        # (same as st.button) — the earliest server-side signal Streamlit
+        # gets for a download, since the browser's save step itself happens
+        # client-side and isn't reported back to the server.
+        downloaded = st.download_button(
+            label,
+            data=content,
+            file_name=filename,
+            mime=_MIME_TYPES[fmt],
+            type="primary" if is_primary else "secondary",
+        )
+        if downloaded:
+            st.toast(f"Downloaded {filename}", icon="⬇️")
