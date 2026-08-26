@@ -36,6 +36,19 @@ class Settings(BaseSettings):
         "qwen/qwen2.5-vl-32b-instruct:free",
     ]
 
+    # Phase 4 hard task — tools/fb_graph_api_tools.py. Empty by default: the
+    # Social Intelligence Agent falls back to the CSV path (social_csv_tools.py)
+    # whenever fb_page_access_token isn't set, same "degrade, don't crash"
+    # pattern as the OpenRouter key.
+    fb_page_access_token: str = ""
+    fb_page_id: str = ""
+    fb_api_version: str = "v21.0"
+
+    # Web search tool (tools/web_search_tools.py). Empty by default: the tool
+    # raises a clear error if called with no key configured rather than
+    # silently returning nothing.
+    tavily_api_key: str = ""
+
     @field_validator(
         "openrouter_fallback_models", "openrouter_vision_fallback_models", mode="before"
     )

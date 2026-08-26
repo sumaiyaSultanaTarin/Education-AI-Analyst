@@ -60,3 +60,43 @@ def test_process_csv_rejects_non_csv_type(tmp_path):
 
     with pytest.raises(ValueError, match="social_intelligence only handles"):
         agent.process_csv(state, doc)
+
+
+def test_process_graph_api_attaches_sentiment_to_every_comment(monkeypatch):
+    def _fake_fetch(**kwargs):
+        return {
+            "posts": [{
+                "fb_post_id": "post-1",
+                "content": "Welcome back!",
+                "posted_at": "2026-08-01",
+                "comments": [{"fb_comment_id": "c-1", "author": "Alex", "content": "Great news!"}],
+            }]
+        }
+
+    monkeypatch.setattr("agents.social_intel_agent.fetch_page_posts_and_comments", _fake_fetch)
+    state = new_state(session_id="s1", goal="analyze comments")
+    agent = SocialIntelligenceAgent()
+
+    state = agent.process_graph_api(state)
+
+    output = state["agent_outputs"][agent.name]["graph_api"]
+    assert output["posts"][0]["comments"][0]["sentiment"]["label"]
+    assert state["errors"] == []
+    assert len(state["messages"]) == 1
+
+
+def test_process_graph_api_records_error_when_credentials_missing(monkeypatch):
+    from tools.fb_graph_api_tools import FacebookGraphAPIError
+
+    def _fake_fetch(**kwargs):
+        raise FacebookGraphAPIError("FB_PAGE_ACCESS_TOKEN and FB_PAGE_ID must both be set")
+
+    monkeypatch.setattr("agents.social_intel_agent.fetch_page_posts_and_comments", _fake_fetch)
+    state = new_state(session_id="s1", goal="analyze comments")
+    agent = SocialIntelligenceAgent()
+
+    state = agent.process_graph_api(state)
+
+    assert state["agent_outputs"] == {}
+    assert len(state["errors"]) == 1
+    assert state["errors"][0]["document_id"] is None
