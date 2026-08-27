@@ -1,10 +1,14 @@
 # Runs what's actually built today: the FastAPI backend + Streamlit frontend,
-# networked together. No Postgres/standalone Chroma service — the backend's
-# session store is still in-memory (see backend/api/session_store.py) and
-# Chroma runs embedded (PersistentClient writing to ./data/chroma_db), not as
-# a separate server, so there's nothing for those containers to connect to yet.
+# networked together. No Postgres/standalone Chroma service — session state
+# and HITL checkpoints are SQLite files under ./data/ now (see
+# backend/api/session_store.py, backend/api/report_pipeline.py), not a
+# networked database, and Chroma runs embedded (PersistentClient writing to
+# ./data/chroma_db), not as a separate server — so there's nothing for a
+# Postgres/Chroma-server container to connect to yet.
 #
 # Before first run: copy .env.example to .env and fill in OPENROUTER_API_KEY.
+# The ./data volume mount below is what makes the SQLite files (and Chroma's
+# on-disk index) persist across `docker compose down`/`up`.
 
 services:
   backend:
