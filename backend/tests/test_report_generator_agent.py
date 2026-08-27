@@ -59,6 +59,32 @@ def test_generate_picks_up_social_intelligence_output(tmp_path):
     assert "1 positive" in full_text
 
 
+def test_generate_handles_web_context_alongside_data_analysis(tmp_path):
+    """Regression test: state["agent_outputs"]["data_analyst"]["web_context"]
+    (a list, from tools/web_search_tools.py) used to be passed straight
+    through into data_analysis, which build_report_docx/pptx iterate
+    assuming every value is a {sheet_name: stats} dict — crashed with
+    AttributeError the moment a real TAVILY_API_KEY made this key actually
+    get populated, found live-testing the app."""
+    agent = ReportGeneratorAgent(rag_agent=_FakeRAGAgent([]), reports_dir=tmp_path)
+    state = new_state(session_id="s1", goal="test")
+    state["agent_outputs"]["data_analyst"] = {
+        "doc-1": {"Results": {"score": {"mean": 70.0, "min": 43, "max": 98, "pass_rate": 100.0, "count": 30}}},
+        "web_context": [{"title": "Benchmark", "url": "https://example.org", "snippet": "avg is 24"}],
+    }
+
+    from docx import Document
+
+    state = agent.generate(state)  # must not raise
+
+    doc = Document(str(tmp_path / "s1" / "report.docx"))
+    full_text = "\n".join(p.text for p in doc.paragraphs)
+    assert "Data Analysis" in full_text
+    assert "score: mean=70.0" in full_text
+    assert "External Benchmark Context" in full_text
+    assert "Benchmark" in full_text
+
+
 def test_generate_records_error_on_failure(tmp_path, monkeypatch):
     agent = ReportGeneratorAgent(rag_agent=_FakeRAGAgent([]), reports_dir=tmp_path)
     state = new_state(session_id="s1", goal="test")

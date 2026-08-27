@@ -52,13 +52,18 @@ def build_report_docx(
     data_analysis: dict,
     rag_citations: list[dict],
     social_summary: dict | None = None,
+    web_context: list[dict] | None = None,
 ) -> str:
     """Compile a formatted DOCX report with citations back to source documents.
 
     `data_analysis` is keyed by document_id -> {sheet_name: column stats}
-    (Data Analyst Agent's output shape); `rag_citations` is the Knowledge/RAG
-    Agent's query hits; `social_summary` is summarize_social_intelligence()'s
-    output. Returns the path written to.
+    (Data Analyst Agent's output shape) — must NOT include a "web_context"
+    key (callers split that out separately, see agents/report_generator_agent.py),
+    since it's a list, not a {sheet_name: stats} dict, and every value here
+    gets iterated the same way. `rag_citations` is the Knowledge/RAG Agent's
+    query hits; `social_summary` is summarize_social_intelligence()'s output;
+    `web_context` is tools/web_search_tools.search_web()'s output. Returns
+    the path written to.
     """
     doc = Document()
     doc.add_heading("Education AI Analyst — Report", level=0)
@@ -93,6 +98,12 @@ def build_report_docx(
         for citation in rag_citations:
             doc.add_paragraph(f"[{citation['filename']}] {citation['text'][:300]}")
 
+    if web_context:
+        doc.add_heading("External Benchmark Context", level=1)
+        for result in web_context:
+            doc.add_paragraph(f"{result['title']} — {result['snippet']}", style="List Bullet")
+            doc.add_paragraph(result["url"])
+
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     doc.save(output_path)
     return output_path
@@ -105,6 +116,7 @@ def build_report_pptx(
     data_analysis: dict,
     rag_citations: list[dict],
     social_summary: dict | None = None,
+    web_context: list[dict] | None = None,
 ) -> str:
     """Compile the same report content as build_report_docx() as a slide deck.
 
@@ -145,6 +157,14 @@ def build_report_pptx(
         _fill_bullets(
             citations_slide.placeholders[1],
             [f"[{c['filename']}] {c['text'][:200]}" for c in rag_citations],
+        )
+
+    if web_context:
+        context_slide = prs.slides.add_slide(content_layout)
+        context_slide.shapes.title.text = "External Benchmark Context"
+        _fill_bullets(
+            context_slide.placeholders[1],
+            [f"{r['title']} — {r['snippet'][:150]}" for r in web_context],
         )
 
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)

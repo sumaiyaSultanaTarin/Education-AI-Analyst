@@ -34,7 +34,13 @@ class ReportGeneratorAgent:
         self._reports_dir = reports_dir or _REPORTS_DIR
 
     def generate(self, state: AnalystState) -> AnalystState:
-        data_analysis = state["agent_outputs"].get(DataAnalystAgent.name, {})
+        data_analyst_output = state["agent_outputs"].get(DataAnalystAgent.name, {})
+        # web_context (a list) doesn't fit data_analysis's documented shape
+        # (document_id -> {sheet_name: column stats}) — split it out rather
+        # than passing it through, or build_report_docx/pptx's `.items()`
+        # over every value raises AttributeError the moment it's populated.
+        web_context = data_analyst_output.get("web_context")
+        data_analysis = {k: v for k, v in data_analyst_output.items() if k != "web_context"}
         social_summary = summarize_social_intelligence(
             state["agent_outputs"].get(SocialIntelligenceAgent.name, {})
         )
@@ -55,6 +61,7 @@ class ReportGeneratorAgent:
                 data_analysis=data_analysis,
                 rag_citations=citations,
                 social_summary=social_summary,
+                web_context=web_context,
             )
             build_report_pptx(
                 str(pptx_path),
@@ -63,6 +70,7 @@ class ReportGeneratorAgent:
                 data_analysis=data_analysis,
                 rag_citations=citations,
                 social_summary=social_summary,
+                web_context=web_context,
             )
         except Exception as exc:  # noqa: BLE001 - convert to ErrorRecord, don't crash the run
             logger.error(
