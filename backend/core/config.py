@@ -24,15 +24,20 @@ class Settings(BaseSettings):
     # so the client tries each in turn rather than assuming one is always up.
     # NoDecode: skip pydantic-settings' default JSON decoding of list env vars
     # so the raw comma-separated string reaches the _split_csv validator below.
+    # Verified against a real chat completion call on 2026-08-27 — the
+    # previous list (llama-3.1/gemma-2/mistral-7b) had aged out of
+    # OpenRouter's free tier entirely (404 on every one). Check
+    # openrouter.ai/models periodically; free-tier availability rotates.
     openrouter_fallback_models: Annotated[list[str], NoDecode] = [
-        "meta-llama/llama-3.1-8b-instruct:free",
-        "google/gemma-2-9b-it:free",
-        "mistralai/mistral-7b-instruct:free",
+        "nvidia/nemotron-3-ultra-550b-a55b:free",
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "z-ai/glm-5.2:free",
     ]
     # Separate list: must be vision-capable models, used only by the OCR agent.
     openrouter_vision_fallback_models: Annotated[list[str], NoDecode] = [
-        "meta-llama/llama-3.2-11b-vision-instruct:free",
-        "qwen/qwen2.5-vl-32b-instruct:free",
+        "minimax/minimax-m3:free",
+        "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+        "google/gemma-4-26b-a4b-it:free",
     ]
 
     @field_validator(

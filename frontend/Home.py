@@ -22,11 +22,29 @@ except httpx.HTTPError:
     st.stop()
 
 active_id = st.session_state.get("session_id")
+if not active_id:
+    # A full page reload (not just a Streamlit rerun) opens a fresh
+    # WebSocket connection and wipes st.session_state — the URL survives
+    # that, so restore from ?session=<id> before treating this as a
+    # brand-new visitor. The session itself was never actually lost; it's
+    # been sitting in data/sessions.db the whole time.
+    from_url = st.query_params.get("session")
+    if from_url:
+        try:
+            get_session(from_url)
+        except httpx.HTTPStatusError:
+            pass
+        else:
+            active_id = from_url
+            st.session_state["session_id"] = from_url
+
 if active_id:
+    st.query_params["session"] = active_id
     st.success(f"Active session: `{active_id}`")
     if st.button("Start a new session instead"):
         st.session_state.pop("session_id", None)
         st.session_state.pop("report_status", None)
+        st.query_params.pop("session", None)
         st.rerun()
 
 st.subheader("Create a new session")
@@ -42,6 +60,7 @@ if submitted:
         record = create_session(goal, user_id)
         st.session_state["session_id"] = record["session_id"]
         st.session_state["report_status"] = None
+        st.query_params["session"] = record["session_id"]
         st.success(f"Created session `{record['session_id']}`. Head to Dashboard to upload documents.")
         st.rerun()
 
@@ -61,5 +80,6 @@ if resumed:
         else:
             st.session_state["session_id"] = existing_id
             st.session_state["report_status"] = None
+            st.query_params["session"] = existing_id
             st.success(f"Resumed session `{existing_id}`.")
             st.rerun()
