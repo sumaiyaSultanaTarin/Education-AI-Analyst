@@ -57,6 +57,14 @@ def generate_report(session_id: str) -> dict:
     return response.json()
 
 
+def get_report_status(session_id: str) -> dict:
+    """Read-only — safe to call on every page load to survive a browser
+    refresh, unlike generate_report() which re-runs the QA/Critic LLM call."""
+    response = _client.get(f"/sessions/{session_id}/report-status")
+    response.raise_for_status()
+    return response.json()
+
+
 def hitl_action(session_id: str, node: str, action: str, comment: str | None = None) -> dict:
     """action is one of 'approve', 'reject', 'retry' — matches the route names."""
     payload = {"comment": comment} if action == "reject" else None

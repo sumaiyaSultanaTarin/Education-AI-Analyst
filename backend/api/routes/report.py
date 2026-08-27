@@ -61,6 +61,21 @@ def generate_report(session_id: str) -> ReportRunResponse:
     return ReportRunResponse(**summarize(record))
 
 
+@router.get("/{session_id}/report-status", response_model=ReportRunResponse)
+def get_report_status(session_id: str) -> ReportRunResponse:
+    """Read-only status check — reads back `record.state` as it stands right
+    now, without invoking the report graph.
+
+    The frontend caches the POST /generate-report and /hitl/* responses in
+    st.session_state, but a full browser refresh wipes that (new WebSocket
+    connection). This lets HITL Controls / Final Report restore the current
+    status after a refresh without re-running the QA/Critic LLM call that
+    POST /generate-report performs.
+    """
+    record = _get_record_or_404(session_id)
+    return ReportRunResponse(**summarize(record))
+
+
 @router.get("/{session_id}/report")
 def get_report(session_id: str) -> FileResponse:
     record = _get_record_or_404(session_id)
