@@ -19,8 +19,15 @@ col_status.markdown(f"**Status:** {status_badge(record['status'])}", unsafe_allo
 
 with st.container(border=True):
     st.subheader("📁 Documents")
+    # Keyed on a counter that's bumped after every successful upload — resets
+    # the widget to empty afterward, so the same files can't be resubmitted
+    # as new documents by clicking Upload again (e.g. a double-click) while
+    # they're still sitting in the box.
+    uploader_key = f"file_uploader_{st.session_state.get('uploader_version', 0)}"
     uploaded_files = st.file_uploader(
-        "Upload documents (PDF, DOCX, PPTX, XLSX, PNG/JPG)", accept_multiple_files=True
+        "Upload documents (PDF, DOCX, PPTX, XLSX, PNG/JPG)",
+        accept_multiple_files=True,
+        key=uploader_key,
     )
     if uploaded_files and st.button("Upload", type="primary"):
         with st.spinner("Uploading..."):
@@ -31,6 +38,7 @@ with st.container(border=True):
                     st.error(f"{file.name}: {exc.response.json().get('detail', exc)}")
                 else:
                     st.toast(f"Uploaded {file.name}", icon="✅")
+        st.session_state["uploader_version"] = st.session_state.get("uploader_version", 0) + 1
         st.rerun()
 
     if record["documents"]:
