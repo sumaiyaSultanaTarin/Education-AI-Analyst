@@ -14,8 +14,15 @@ st.write(f"**Goal:** {record['goal']}")
 st.write(f"**Status:** {record['status']}")
 
 st.subheader("Documents")
+# Keyed on a counter that's bumped after every successful upload — resets
+# the widget to empty afterward, so the same files can't be resubmitted as
+# new documents by clicking Upload again (e.g. a double-click) while
+# they're still sitting in the box.
+uploader_key = f"file_uploader_{st.session_state.get('uploader_version', 0)}"
 uploaded_files = st.file_uploader(
-    "Upload documents (PDF, DOCX, PPTX, XLSX, PNG/JPG)", accept_multiple_files=True
+    "Upload documents (PDF, DOCX, PPTX, XLSX, PNG/JPG)",
+    accept_multiple_files=True,
+    key=uploader_key,
 )
 if uploaded_files and st.button("Upload"):
     for file in uploaded_files:
@@ -25,6 +32,7 @@ if uploaded_files and st.button("Upload"):
             st.error(f"{file.name}: {exc.response.json().get('detail', exc)}")
         else:
             st.success(f"Uploaded {file.name}")
+    st.session_state["uploader_version"] = st.session_state.get("uploader_version", 0) + 1
     st.rerun()
 
 if record["documents"]:
@@ -38,12 +46,19 @@ st.subheader("Run intake")
 st.caption("Extracts text/tables from every uploaded document (Document Ingestion + Vision/OCR agents).")
 if st.button("Run intake", disabled=not record["documents"]):
     with st.spinner("Running intake..."):
-        result = run_intake(session_id)
-    if result["errors"]:
-        st.warning(f"Intake finished with {len(result['errors'])} error(s) — see Logs/Errors.")
+        run_intake(session_id)
+    # Rerun so `record` (and Generate report's disabled state below) reflect
+    # the now-updated session instead of the stale copy fetched before this
+    # button was clicked.
+    st.rerun()
+
+if record["status"] == "completed":
+    if record["errors"]:
+        st.warning(f"Intake finished with {len(record['errors'])} error(s) — see Logs/Errors.")
     else:
         st.success("Intake completed with no errors.")
-    st.json(result["agent_outputs"], expanded=False)
+if record["agent_outputs"]:
+    st.json(record["agent_outputs"], expanded=False)
 
 st.subheader("Generate report")
 st.caption("Runs Data Analyst → Knowledge/RAG → Report Generator → QA/Critic, then pauses for HITL approval.")
