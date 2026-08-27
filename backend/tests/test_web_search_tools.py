@@ -42,7 +42,13 @@ def test_search_web_returns_normalized_results():
     ]
 
 
-def test_search_web_raises_when_api_key_missing():
+def test_search_web_raises_when_api_key_missing(monkeypatch):
+    # api_key="" alone isn't enough to prove this — search_web() falls back
+    # to Settings.tavily_api_key when the explicit arg is falsy, so without
+    # also patching get_settings() this test would pass or fail depending
+    # on whether a real key happens to be configured in .env.
+    monkeypatch.setattr("tools.web_search_tools.get_settings", lambda: type("S", (), {"tavily_api_key": ""})())
+
     with pytest.raises(WebSearchError, match="TAVILY_API_KEY"):
         search_web("anything", api_key="", client=_mock_client(_TAVILY_RESPONSE))
 

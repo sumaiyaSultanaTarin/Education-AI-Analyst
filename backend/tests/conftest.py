@@ -5,6 +5,8 @@ from pathlib import Path
 import chromadb
 import pytest
 
+from tools.web_search_tools import WebSearchError
+
 SAMPLE_DOCS_DIR = Path(__file__).resolve().parents[2] / "data" / "sample_docs"
 
 
@@ -42,3 +44,20 @@ def chroma_collection():
     """
     client = chromadb.EphemeralClient()
     return client.get_or_create_collection(f"test-collection-{uuid.uuid4().hex}")
+
+
+@pytest.fixture(autouse=True)
+def _no_real_web_search(monkeypatch):
+    """Stops DataAnalystAgent.analyze_all() from making a real Tavily call
+    as a side effect of running the suite, now that a real TAVILY_API_KEY
+    can legitimately live in .env (see tools/web_search_tools.py) — same
+    "no real network/model calls in tests" rationale as fake_embed_fn and
+    chroma_collection above. Only patches the name as imported into
+    agents.data_analyst_agent, so tests/test_web_search_tools.py (which
+    calls tools.web_search_tools.search_web directly) is unaffected.
+    """
+
+    def _fake_search_web(*args, **kwargs):
+        raise WebSearchError("no TAVILY_API_KEY in tests — see conftest._no_real_web_search")
+
+    monkeypatch.setattr("agents.data_analyst_agent.search_web", _fake_search_web)
