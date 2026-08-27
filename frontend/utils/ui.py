@@ -75,17 +75,15 @@ def inject_base_styles() -> None:
 
 
 def page_header(icon: str, title: str, subtitle: str | None = None) -> None:
+    # Built as one line, not an indented multi-line f-string: a blank line
+    # left where subtitle_html would go (when subtitle is None) can split
+    # markdown's HTML-block parsing, leaking the trailing </div> tags as
+    # literal text instead of rendering them — reproduced on every page that
+    # calls this without a subtitle (Logs/Errors, HITL Controls).
     subtitle_html = f'<div class="eaa-header-subtitle">{subtitle}</div>' if subtitle else ""
     st.markdown(
-        f"""
-        <div class="eaa-header">
-            <span class="eaa-header-icon">{icon}</span>
-            <div>
-                <div class="eaa-header-title">{title}</div>
-                {subtitle_html}
-            </div>
-        </div>
-        """,
+        f'<div class="eaa-header"><span class="eaa-header-icon">{icon}</span>'
+        f'<div><div class="eaa-header-title">{title}</div>{subtitle_html}</div></div>',
         unsafe_allow_html=True,
     )
 
