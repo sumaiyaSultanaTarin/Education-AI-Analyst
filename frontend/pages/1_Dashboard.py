@@ -56,13 +56,23 @@ with col_intake:
         st.caption("Extracts text/tables from every uploaded document (Document Ingestion + Vision/OCR agents).")
         if st.button("Run intake", disabled=not record["documents"], use_container_width=True):
             with st.spinner("Running intake..."):
-                result = run_intake(session_id)
-            if result["errors"]:
-                st.warning(f"Intake finished with {len(result['errors'])} error(s) — see Logs/Errors.")
+                run_intake(session_id)
+            # Rerun so `record` (and the Status pill, and Generate report's
+            # disabled state above) reflect the now-updated session instead
+            # of the stale copy fetched before this button was clicked.
+            st.rerun()
+
+        # Reflects record's *current* state, not just right after a click —
+        # same reasoning as the Documents table above: still accurate after
+        # navigating back to this page later, not just immediately post-run.
+        if record["status"] == "completed":
+            if record["errors"]:
+                st.warning(f"Intake finished with {len(record['errors'])} error(s) — see Logs/Errors.")
             else:
-                st.toast("Intake completed with no errors.", icon="✅")
+                st.success("Intake completed with no errors.")
+        if record["agent_outputs"]:
             with st.expander("Agent outputs", expanded=False):
-                st.json(result["agent_outputs"])
+                st.json(record["agent_outputs"])
 
 with col_report:
     with st.container(border=True):
