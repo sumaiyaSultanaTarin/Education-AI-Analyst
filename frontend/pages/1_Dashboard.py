@@ -88,5 +88,7 @@ with col_report:
                     st.session_state["report_status"] = status
                     st.success(f"Report status: {status['status']} (QA: {status['qa_status']})")
                     st.info("Continue on the HITL Controls page to approve/reject.")
-        if record["status"] != "completed":
+        if record["status"] in ("awaiting_approval", "report_ready"):
+            st.caption("A report already exists for this session — see HITL Controls / Final Report.")
+        elif record["status"] != "completed":
             st.caption("Run intake first.")
