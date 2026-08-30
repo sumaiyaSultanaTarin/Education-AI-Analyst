@@ -18,6 +18,14 @@ from core.logging_config import get_logger
 
 logger = get_logger(__name__)
 
+# The openai SDK defaults to a 600s (10 min) timeout per call when none is
+# set. Free-tier OpenRouter models occasionally hang instead of erroring, so
+# without an explicit bound one stuck model can silently freeze an entire
+# request for up to 10 minutes before the fallback list even gets a chance
+# to try the next model. 30s is generous for a chat completion but still
+# fails fast enough that _chat_over_models' fallback loop actually kicks in.
+_REQUEST_TIMEOUT_SECONDS = 30.0
+
 
 class AllModelsFailedError(RuntimeError):
     """Raised when every model in the fallback list failed."""
@@ -42,6 +50,7 @@ class LLMClient:
         self._client = OpenAI(
             api_key=self._settings.openrouter_api_key,
             base_url=self._settings.openrouter_base_url,
+            timeout=_REQUEST_TIMEOUT_SECONDS,
         )
         # Usage from the most recent successful _call_model() call — read via
         # get_last_usage() right after chat()/chat_with_image() returns.
