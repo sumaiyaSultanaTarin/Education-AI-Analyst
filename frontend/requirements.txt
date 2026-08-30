@@ -1,0 +1,9 @@
+# Scoped to what frontend/ actually imports (verified: streamlit + httpx
+# only — grep -rh "^import |^from " frontend/). Streamlit Community Cloud
+# uses a requirements.txt in the same directory as the main entrypoint
+# (frontend/Home.py) in preference to the repo-root one, which otherwise
+# forces installing every backend dependency too — including
+# sentence-transformers/chromadb/pandas, none of which the frontend uses,
+# and none of which are needed just to talk to the backend over HTTP.
+httpx==0.28.1
+streamlit==1.51.0
