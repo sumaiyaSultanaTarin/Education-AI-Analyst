@@ -29,7 +29,7 @@ if not active_id:
     # WebSocket connection and wipes st.session_state — the URL survives
     # that, so restore from ?session=<id> before treating this as a
     # brand-new visitor. The session itself was never actually lost; it's
-    # been sitting in data/sessions.db the whole time.
+    # been sitting in the backend's session store (data/sessions.db) the whole time.
     from_url = st.query_params.get("session")
     if from_url:
         try:

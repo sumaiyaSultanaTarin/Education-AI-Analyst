@@ -1,4 +1,11 @@
-"""Shared guard used by every page except Home.py."""
+"""Shared guard used by every page except Home.py.
+
+A full browser reload opens a fresh WebSocket connection, which wipes
+st.session_state — losing the active session client-side even though it's
+still safe on the backend (api/session_store.py, data/sessions.db). The URL
+survives a reload, so every page keeps ?session=<id> in its own URL and
+restores from it if session_state comes back empty.
+"""
 
 import httpx
 import streamlit as st
@@ -15,11 +22,6 @@ def require_session_id() -> str:
         st.query_params["session"] = session_id
         return session_id
 
-    # st.session_state lives on the WebSocket connection, so a full page
-    # reload (not just a Streamlit rerun) opens a fresh connection and wipes
-    # it — even though the session itself is still safe on the backend
-    # (data/sessions.db). The URL survives a reload, so fall back to that
-    # before giving up.
     from_url = st.query_params.get("session")
     if from_url:
         try:

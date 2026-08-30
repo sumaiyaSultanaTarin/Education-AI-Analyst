@@ -3,6 +3,13 @@
 There's no dedicated GET /sessions/{id}/errors endpoint yet — errors are
 part of the SessionResponse (backend/api/routes/sessions.py) already
 returned by GET /sessions/{id}, so this reuses that instead of adding one.
+
+record["errors"] already includes report/QA-stage errors too, not just
+intake errors: api/session_store.py's `sessions` dict is shared by every
+route module, and report_pipeline.apply_result() mutates the same
+SessionRecord.state in place after a generate-report/hitl call — so this
+doesn't need (and previously wrongly relied on) st.session_state["report_status"]
+to see those, which was wiped by a browser refresh.
 """
 
 import streamlit as st
@@ -18,10 +25,6 @@ page_header("🚨", "Logs / Errors")
 with st.spinner("Loading logs..."):
     record = get_session(session_id)
 errors = record["errors"]
-
-report_status = st.session_state.get("report_status")
-if report_status and report_status["errors"]:
-    errors = errors + [e for e in report_status["errors"] if e not in errors]
 
 if not errors:
     st.success("No errors recorded for this session.")

@@ -1,14 +1,16 @@
 """Approve, reject, or retry the report paused at the hitl_approval node.
 
-Reads the cached response from the last generate-report/hitl call in
-st.session_state["report_status"] rather than re-invoking the report graph
-just to check status — re-invoking would re-run the QA/Critic LLM call and
-re-write the report file for no reason.
+Fetches the current status fresh from GET /sessions/{id}/report-status on
+every load rather than trusting st.session_state["report_status"] — that
+cache only exists in the browser tab that ran generate-report, and is wiped
+by a page refresh (new WebSocket connection). report-status is read-only
+(no graph re-invoke), so calling it on every load is cheap and always
+correct, including after a refresh or when opened in a second tab.
 """
 
 import httpx
 import streamlit as st
-from utils.api_client import hitl_action
+from utils.api_client import get_report_status, hitl_action
 from utils.session_state import require_session_id
 from utils.ui import inject_base_styles, page_header, status_badge
 
@@ -19,8 +21,14 @@ inject_base_styles()
 session_id = require_session_id()
 page_header("🧑‍⚖️", "Human-in-the-Loop Controls")
 
-status = st.session_state.get("report_status")
-if status is None:
+try:
+    with st.spinner("Loading report status..."):
+        status = get_report_status(session_id)
+except httpx.HTTPStatusError as exc:
+    st.error(exc.response.json().get("detail", str(exc)))
+    st.stop()
+
+if status["status"] not in ("awaiting_approval", "report_ready"):
     st.warning("No report generated yet for this session. Generate one from the Dashboard first.")
     st.stop()
 
@@ -37,10 +45,12 @@ if status["errors"]:
 
 def _act(action: str, comment: str | None = None) -> None:
     try:
-        st.session_state["report_status"] = hitl_action(session_id, _NODE, action, comment)
+        hitl_action(session_id, _NODE, action, comment)
     except httpx.HTTPStatusError as exc:
         st.error(exc.response.json().get("detail", str(exc)))
     else:
+        # No need to cache the response — the rerun below re-fetches fresh
+        # via get_report_status() above.
         st.rerun()
 
 
