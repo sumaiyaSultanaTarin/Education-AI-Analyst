@@ -6,6 +6,53 @@
 
 ---
 
+## 0. Current Implementation Status (as of 2026-08-30)
+
+Sections 1–9 below are the original Phase 0 planning document — kept as the
+historical record of decisions made before implementation. Real engineering
+tradeoffs shifted some of what was planned; this section is the accurate,
+current picture, read this first if you're checking docs against code.
+
+- **Agents:** all 8 (Supervisor + 7 workers) built exactly as planned in §2.2.
+- **Two graphs, two different collaboration patterns — not one uniform
+  hub.** §5's diagram below shows a single hub-routed flow; the real system
+  is two independently compiled graphs with genuinely different shapes:
+  - **Intake graph** (`graph/graph_builder.py`): Supervisor-hub, as originally
+    designed — `document_ingestion`/`vision_ocr`/`social_intelligence` each
+    return to the Supervisor, which routes the next unprocessed document.
+  - **Report graph** (`graph/report_graph_builder.py`): a genuine **direct
+    chain with no Supervisor node at all** —
+    `data_analyst → knowledge_rag → report_generator → qa_critic →
+    hitl_approval`, each agent handing off straight to the next. Confirmed
+    live from the compiled graph object itself (`.get_graph().draw_mermaid()`),
+    not just intended — see the Execution Graph frontend panel.
+- **Facebook Graph API:** no longer just the fallback-path placeholder §1
+  and §8 describe — genuinely built, tested, and wired into both the
+  backend (`POST /sessions/{id}/social/pull-facebook`,
+  `tools/fb_graph_api_tools.py`) and the frontend (Dashboard's "Pull
+  Facebook data" button), verified live against a real Facebook Page with
+  real posts and comments. The CSV-import path (§1, §8) remains available
+  as an independent, always-working fallback — not because Graph API failed,
+  but because it's a legitimate demo-reliability choice on its own merits.
+- **Web search tool** (not in the original plan): added to the Data Analyst
+  Agent via the Tavily API (`tools/web_search_tools.py`), pulling real
+  external benchmark context into the generated report as its own section.
+- **Memory/persistence — simpler than §4's full ERD.** Session state and
+  LangGraph checkpoints are persisted to two SQLite files
+  (`data/sessions.db`, `data/checkpoints.db`) via `api/session_store.py` —
+  no Postgres, and none of §4's `User`/`Institution`/`Teacher`/`TPEScore`
+  relational schema was built. §4 is kept below for historical reference
+  only; nothing in the running app depends on it. What *is* real: verified
+  live surviving both a backend restart and a browser refresh (session ID
+  round-trips through the URL, not just server memory).
+- **Live execution trace:** confirmed as designed in §6 — no WebSocket/SSE
+  stream; the graphs run synchronously to completion within one request, so
+  the UI polls instead. A deliberate scope decision, not an oversight.
+- **Auth/roles** (§1's first gap): not built — out of scope for the demo,
+  every session is anonymous/single-user.
+
+---
+
 ## 1. Requirement Analysis & Gaps in the Original Spec
 
 The assignment gives you the *shape* of the system (supervisor + 6 agents, memory, tools, HITL, UI) but leaves several things unspecified that you need to decide before writing code, or you'll end up rebuilding parts of it in week 3.
@@ -213,30 +260,51 @@ FacebookSource (id, department_id FK, fb_page_or_group_id, name, permission_stat
 
 ---
 
-## 5. LangGraph Workflow Diagram
+## 5. LangGraph Workflow Diagrams
+
+Superseded by §0 above once real vs. planned diverged — kept here as the
+original single-graph design intent. The two diagrams below are what's
+actually compiled and running today, pulled directly from each graph's own
+`.get_graph().draw_mermaid()` (also what the Execution Graph frontend panel
+renders live, so these can't drift from the real code the way a hand-drawn
+diagram could).
+
+**Intake graph** (`graph/graph_builder.py`) — Supervisor as a hub:
 
 ```mermaid
 graph TD
-    Start([User goal + uploaded files]) --> Supervisor
-    Supervisor -->|route: parse docs| DocIngest[Document Ingestion Agent]
-    Supervisor -->|route: scanned/image| OCR[Vision/OCR Agent]
+    Start([Uploaded documents]) --> Supervisor
+    Supervisor -->|pdf/docx/pptx/xlsx| DocIngest[Document Ingestion Agent]
+    Supervisor -->|image| OCR[Vision/OCR Agent]
+    Supervisor -->|social_csv| Social[Social Intelligence Agent]
     DocIngest --> Supervisor
     OCR --> Supervisor
-    Supervisor -->|route: analyze results/enrollment| DataAnalyst[Data Analyst Agent]
-    Supervisor -->|route: FB TPE signal| Social[Social Intelligence Agent]
-    DataAnalyst --> Supervisor
     Social --> Supervisor
-    Supervisor -->|route: semantic lookup needed| RAG[Knowledge/RAG Agent]
-    RAG --> Supervisor
-    Supervisor -->|all inputs ready| ReportGen[Report Generator Agent]
+    Supervisor -->|all documents processed| IntakeEnd([intake complete])
+```
+
+**Report graph** (`graph/report_graph_builder.py`) — a genuine direct chain,
+**no Supervisor node in this graph at all**:
+
+```mermaid
+graph TD
+    IntakeEnd([intake complete]) --> DataAnalyst[Data Analyst Agent]
+    DataAnalyst --> RAG[Knowledge/RAG Agent]
+    RAG --> ReportGen[Report Generator Agent]
     ReportGen --> QA[QA/Critic Agent]
     QA -->|issues found| ReportGen
     QA -->|passes checks| HITL{{Human-in-the-Loop\napproval - interrupt()}}
     HITL -->|approved| Finalize([Final report delivered])
-    HITL -->|rejected/edit requested| ReportGen
+    HITL -->|rejected/retry| ReportGen
 ```
 
-The Supervisor is a **hub node**: every worker returns control to it rather than chaining directly to the next agent, which keeps routing logic centralized and lets you add/remove agents without rewiring the graph.
+Two deliberately different collaboration shapes for two different problems:
+the intake phase routes documents by type to whichever worker handles that
+type, which is naturally a dispatch problem — a hub fits. The report phase
+is an inherently sequential pipeline (each stage needs the previous stage's
+output), so it's wired as what it actually is: agents handing off directly to
+each other, no hub in between. Neither is a compromise; each fits its half of
+the problem.
 
 ---
 
@@ -292,8 +360,9 @@ Weekly sync recommended: 30 min, each person demos their lane against the shared
 - **Chroma + a relational DB, not Chroma alone:** vector search answers "what does the record say about X," but director-level questions ("average TPE by department this term") need SQL aggregation — Chroma isn't built for that.
 - **Local embeddings (`sentence-transformers`) instead of an API:** OpenRouter doesn't serve embeddings, and adding a second paid/rate-limited API just for embeddings is an avoidable dependency given free-tier constraints.
 - **OpenRouter with a model fallback list, not a single model:** free-tier models on OpenRouter throttle and occasionally go unavailable; the LLM client should try a short ordered list of free models with retry/backoff rather than hard-failing on one.
-- **FB Graph API with a CSV/JSON fallback path:** keeps the Social Intelligence Agent demoable even if Meta app review isn't done in time, and keeps you clearly on the compliant side of FB's platform terms.
-- **Supervisor as a hub, not a chain:** every agent returns to the Supervisor rather than calling the next agent directly — this keeps the routing logic in one place and makes the system genuinely extensible (adding agent #9 doesn't require touching agent #4's code).
+- **FB Graph API with a CSV/JSON fallback path:** keeps the Social Intelligence Agent demoable even if Meta app review isn't done in time, and keeps you clearly on the compliant side of FB's platform terms. Both paths are real and working (see §0) — CSV import stays the default for demo reliability, not because Graph API is unfinished.
+- **Supervisor as a hub for intake, a direct chain for the report pipeline — not one uniform pattern.** The original plan assumed a Supervisor-hub throughout; what actually got built (see §0, §5) splits by problem shape: intake is a type-based dispatch problem (a hub fits), the report pipeline is an inherently sequential one (a direct chain fits, and is what's actually running — zero Supervisor involvement in that graph). Adding worker #9 to the intake side still doesn't require touching another agent's code; the report side's agents already only need to know about their immediate predecessor's output shape.
+- **Web search as a fourth tool alongside RAG/APIs/Python:** not in the original plan — added to the Data Analyst Agent (Tavily) once it became clear "Tool Integration" as graded wanted web search specifically named, not just implied by RAG. Feeds real external context into the generated report as its own section, not a side computation that gets thrown away.
 
 ---
 
