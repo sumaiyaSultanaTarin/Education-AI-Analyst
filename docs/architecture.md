@@ -321,11 +321,14 @@ the problem.
 | `GET` | `/sessions/{id}/graph` | Mermaid source for both compiled graphs, for the Graph Viewer — implemented (`api/routes/observability.py`) |
 | `GET` | `/sessions/{id}/cost` | Token usage + cost breakdown per LLM call — implemented (`api/routes/observability.py`); only `qa_critic`/`vision_ocr` call an LLM, and every fallback model is free-tier so `cost_usd` is genuinely `$0.00` today |
 | `GET` | `/sessions/{id}/errors` | Structured error log — reused from `GET /sessions/{id}`'s `errors` field instead of a dedicated route (no separate error store exists) |
+| `POST` | `/sessions/{id}/generate-report` | Run `data_analyst → knowledge_rag → report_generator → qa_critic`, pausing at `hitl_approval` — implemented (`api/routes/report.py`) |
+| `GET` | `/sessions/{id}/report-status` | Read-only status check (no graph re-invoke) — implemented (`api/routes/report.py`); lets HITL Controls/Final Report recover the correct status after a browser refresh instead of relying on client-side state that a reload wipes |
 | `POST` | `/sessions/{id}/hitl/{node}/approve` | Resume a paused graph |
 | `POST` | `/sessions/{id}/hitl/{node}/reject` | Reject + optional edit instructions |
 | `POST` | `/sessions/{id}/hitl/{node}/retry` | Re-run the failed/paused node |
 | `GET` | `/sessions/{id}/memory?query=` | Query the Chroma knowledge base for this session |
-| `GET` | `/sessions/{id}/report` | Fetch the final generated file |
+| `GET` | `/sessions/{id}/report?format=docx\|pptx` | Fetch the final generated file, gated on HITL approval |
+| `POST` | `/sessions/{id}/social/pull-facebook` | Live Facebook Graph API pull for `FB_PAGE_ID` (`.env`) — implemented (`api/routes/social.py`); separate from the CSV-import path (`POST .../documents` + `POST .../run` for a `social_csv` file) |
 
 All endpoints scoped by `session_id` so 4 teammates (or many end users) can run concurrent sessions without state collisions.
 
