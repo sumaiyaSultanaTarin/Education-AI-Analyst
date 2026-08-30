@@ -57,6 +57,15 @@ def generate_report(session_id: str) -> dict:
     return response.json()
 
 
+def pull_facebook(session_id: str) -> dict:
+    """Live Facebook Graph API pull for FB_PAGE_ID (.env) — separate from
+    the CSV-import path (upload_document + run_intake for a social_csv file).
+    """
+    response = _client.post(f"/sessions/{session_id}/social/pull-facebook")
+    response.raise_for_status()
+    return response.json()
+
+
 def hitl_action(session_id: str, node: str, action: str, comment: str | None = None) -> dict:
     """action is one of 'approve', 'reject', 'retry' — matches the route names."""
     payload = {"comment": comment} if action == "reject" else None

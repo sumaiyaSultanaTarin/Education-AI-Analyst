@@ -66,7 +66,17 @@ def test_fetch_page_posts_and_comments_paginates_posts_and_fetches_each_comment_
     ]
 
 
-def test_fetch_raises_when_credentials_missing():
+def test_fetch_raises_when_credentials_missing(monkeypatch):
+    # page_id="" / access_token="" alone aren't enough to prove this —
+    # fetch_page_posts_and_comments() falls back to Settings.fb_page_id/
+    # fb_page_access_token when the explicit args are falsy, so without also
+    # patching get_settings() this test's outcome would depend on whether a
+    # real FB_PAGE_ACCESS_TOKEN happens to be configured in .env.
+    monkeypatch.setattr(
+        "tools.fb_graph_api_tools.get_settings",
+        lambda: type("S", (), {"fb_page_id": "", "fb_page_access_token": "", "fb_api_version": "v21.0"})(),
+    )
+
     with pytest.raises(FacebookGraphAPIError, match="FB_PAGE_ACCESS_TOKEN"):
         fetch_page_posts_and_comments(page_id="", access_token="", client=_mock_client({}))
 

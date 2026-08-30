@@ -2,7 +2,7 @@
 
 import httpx
 import streamlit as st
-from utils.api_client import generate_report, get_session, run_intake, upload_document
+from utils.api_client import generate_report, get_session, pull_facebook, run_intake, upload_document
 from utils.session_state import require_session_id
 from utils.ui import inject_base_styles, page_header, status_badge
 
@@ -47,6 +47,29 @@ with st.container(border=True):
         )
     else:
         st.caption("No documents uploaded yet.")
+
+with st.container(border=True):
+    st.subheader("📘 Facebook (live)")
+    st.caption(
+        "Pulls real posts/comments from FB_PAGE_ID (.env) via the Graph API — separate "
+        "from the CSV-import path above (upload a social_csv file + Run intake)."
+    )
+    if st.button("Pull Facebook data", use_container_width=True):
+        with st.spinner("Calling the Facebook Graph API..."):
+            try:
+                result = pull_facebook(session_id)
+            except httpx.HTTPStatusError as exc:
+                st.error(exc.response.json().get("detail", str(exc)))
+            else:
+                if result["errors"]:
+                    st.warning(result["errors"][0]["message"])
+                else:
+                    st.success(f"Pulled {result['posts_found']} post(s) from your Page.")
+                    for post in result["posts"]:
+                        with st.expander(post["content"][:70] or "(no text)"):
+                            for comment in post["comments"]:
+                                label = comment["sentiment"]["label"]
+                                st.write(f"**[{label}]** {comment['content']}")
 
 col_intake, col_report = st.columns(2, gap="large")
 

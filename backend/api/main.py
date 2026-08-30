@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from api.routes import documents, hitl, memory, observability, report, sessions
+from api.routes import documents, hitl, memory, observability, report, sessions, social
 from core.logging_config import configure_logging, get_logger
 
 configure_logging()
@@ -30,6 +30,7 @@ app.include_router(report.router)
 app.include_router(hitl.router)
 app.include_router(memory.router)
 app.include_router(observability.router)
+app.include_router(social.router)
 
 
 @app.get("/health")
