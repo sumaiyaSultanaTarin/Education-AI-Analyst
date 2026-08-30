@@ -14,7 +14,9 @@ import httpx
 import streamlit as st
 
 BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8000")
-_TIMEOUT = 120.0  # generate-report runs embeddings + an LLM call synchronously
+_TIMEOUT = 180.0  # generate-report runs embeddings + an LLM call synchronously;
+# backend/core/llm_client.py now bounds each model attempt to 30s, so a
+# worst-case run through the whole 3-model fallback list stays under this
 
 # One pooled connection reused across every call/page/rerun instead of a
 # fresh TCP connection per request — every page was paying reconnect

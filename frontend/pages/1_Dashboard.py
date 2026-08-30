@@ -105,8 +105,20 @@ with col_report:
             with st.spinner("Generating report (this calls an LLM for QA — may take a moment)..."):
                 try:
                     status = generate_report(session_id)
+                except httpx.TimeoutException:
+                    st.error(
+                        "The backend didn't respond in time. It may still be working in the "
+                        "background — wait a bit and reload this page, or try again."
+                    )
                 except httpx.HTTPStatusError as exc:
-                    st.error(exc.response.json().get("detail", str(exc)))
+                    try:
+                        detail = exc.response.json().get("detail", str(exc))
+                    except ValueError:
+                        # Response body wasn't JSON — e.g. a host/proxy error page
+                        # (502/503) returned while the backend was down or restarting,
+                        # not an error from our own API.
+                        detail = f"Backend returned {exc.response.status_code}: {exc.response.text[:300] or str(exc)}"
+                    st.error(detail)
                 else:
                     st.session_state["report_status"] = status
                     st.success(f"Report status: {status['status']} (QA: {status['qa_status']})")
