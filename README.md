@@ -8,6 +8,10 @@ approves before it's released.
 Built for the *Computer Science Applications and Advancements* course (2nd Semester, MSc) by
 **Tarin, Saif, Shohana, and Fahim**.
 
+**Live demo:** [education-ai-analyst-apkc5i5n8vfya3n2njtvoe.streamlit.app](https://education-ai-analyst-apkc5i5n8vfya3n2njtvoe.streamlit.app/)
+*(as of this writing the app is set to private on Streamlit Community Cloud and redirects to a
+login page — set Settings → Sharing → public before relying on this link for grading)*
+
 ## Architecture
 
 ![System architecture diagram](docs/architecture-diagram.svg)
