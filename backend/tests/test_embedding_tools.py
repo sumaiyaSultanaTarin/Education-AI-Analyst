@@ -38,11 +38,16 @@ def test_get_model_is_cached(monkeypatch):
     # _get_model is @lru_cache'd — calling it twice must return the same
     # instance rather than reloading the model from disk/network each time.
     # Patch the constructor itself (not the SentenceTransformer.encode result)
-    # so this doesn't need real model weights.
+    # so this doesn't need real model weights. Patched on sentence_transformers
+    # itself, not embedding_tools — SentenceTransformer is imported lazily
+    # inside _get_model() (see that function's docstring for why), so it's
+    # never a module-level attribute of embedding_tools to patch directly.
+    import sentence_transformers
+
     embedding_tools._get_model.cache_clear()
     calls = []
     monkeypatch.setattr(
-        embedding_tools, "SentenceTransformer", lambda name: calls.append(name) or _FakeModel()
+        sentence_transformers, "SentenceTransformer", lambda name: calls.append(name) or _FakeModel()
     )
 
     first = embedding_tools._get_model()
